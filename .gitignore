@@ -1,0 +1,92 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# Environment files - NEVER commit these
+.env
+.env.local
+.env*.local
+.env.server
+.env.production
+.env.development
+.env.staging
+
+# Supabase
+supabase/.temp/
+supabase/.branches/
+supabase/.env
+
+# TypeScript
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# Generated native folders
+/ios
+/android
+
+# Testing
+coverage/
+.nyc_output/
+
+# Build outputs
+build/
+out/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# EAS
+.eas/
+
+# Logs
+logs/
+*.log
+
+# Credentials (extra protection)
+credentials.json
+google-services.json
+GoogleService-Info.plist
+*.keystore
+
+# ML models (large files)
+ml/models/*.tflite
+ml/models/*.mlmodel
+
+# Temporary files
+tmp/
+temp/
+*.tmp
