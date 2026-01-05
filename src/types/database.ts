@@ -3,22 +3,28 @@
 // Auto-generate with: npx supabase gen types typescript --local > src/types/database.ts
 // ============================================================
 
+// Permit types - matches database enum 'permit_type'
 export type PermitType =
   | 'commuter_west'
   | 'commuter_north'
   | 'commuter_satellite'
+  | 'commuter_icc'
+  | 'evening_commuter'
+  | 'satellite'
   | 'residence_z1'
   | 'residence_z2'
   | 'residence_z3'
   | 'residence_z4'
   | 'residence_z5'
   | 'residence_z6'
+  | 'residence_z7'
   | 'faculty_staff'
   | 'garage_flint'
   | 'garage_raider'
   | 'visitor'
   | 'none';
 
+// Campus areas - matches database enum 'lot_area'
 export type LotArea =
   | 'commuter_west'
   | 'commuter_north'
@@ -28,15 +34,20 @@ export type LotArea =
   | 'metered'
   | 'faculty';
 
+// Occupancy levels - matches database enum 'occupancy_status'
 export type OccupancyStatus = 'open' | 'busy' | 'filling' | 'full' | 'closed';
 
-export type ConfidenceLevel = 'high' | 'medium' | 'low' | 'stale';
+// Confidence levels - matches database enum 'confidence_level'
+export type ConfidenceLevel = 'low' | 'medium' | 'high' | 'verified';
 
+// Trend direction for occupancy changes
 export type Trend = 'rising' | 'stable' | 'falling';
 
+// Event types - matches database enum 'event_type'
 export type EventType =
   | 'football'
   | 'basketball'
+  | 'baseball'
   | 'concert'
   | 'graduation'
   | 'university'
@@ -44,8 +55,10 @@ export type EventType =
   | 'construction'
   | 'other';
 
-export type ReportType = 'parked' | 'left' | 'status_report' | 'full_report';
+// Report types - matches database enum 'report_type'
+export type ReportType = 'parked' | 'left' | 'status_report' | 'full_report' | 'enforcement' | 'hazard';
 
+// Reporter levels - matches database enum 'reporter_level'
 export type ReporterLevel =
   | 'newbie'
   | 'rookie'
@@ -150,13 +163,19 @@ export interface LotStatus {
 }
 
 export interface LotWithStatus extends Lot {
+  lot_id: string; // Alias for id for compatibility
+  lot_name: string; // Alias for name for compatibility
   occupancy_percent: number;
   status: OccupancyStatus;
   confidence: ConfidenceLevel;
   trend: Trend | null;
   report_count_1h: number;
   last_report_at: string | null;
+  last_report_time?: string | null;
   status_updated_at: string;
+  is_valid_now?: boolean;
+  valid_after?: string | null;
+  valid_permits?: PermitType[];
 }
 
 export interface PermitRule {
@@ -176,8 +195,8 @@ export interface Report {
   user_id: string | null;
   lot_id: string;
   report_type: ReportType;
-  status: OccupancyStatus | null;
-  occupancy_estimate: number | null;
+  occupancy_status: OccupancyStatus | null;
+  occupancy_percent: number | null;
   note: string | null;
   location: { lat: number; lng: number } | null;
   is_geofence_triggered: boolean;
@@ -185,17 +204,22 @@ export interface Report {
   created_at: string;
 }
 
+export type EventSeverity = 'minor' | 'moderate' | 'major' | 'critical';
+
 export interface ParkingEvent {
   id: string;
-  title: string;
+  name: string;
   event_type: EventType;
   description: string | null;
-  start_time: string;
-  end_time: string;
-  closure_time: string | null;
-  affected_lots: string[];
+  starts_at: string;
+  ends_at: string;
+  affected_lot_ids: string[];
+  impact_level: number; // 1-5
+  venue: string | null;
+  expected_attendance: number | null;
+  arrival_recommendation: string | null; // INTERVAL as string
   alternative_lots: string[] | null;
-  source: 'manual' | 'scraped' | 'weather';
+  source: string | null;
   source_url: string | null;
   created_at: string;
   updated_at: string;
@@ -204,16 +228,30 @@ export interface ParkingEvent {
 export interface LotPrediction {
   id: string;
   lot_id: string;
-  prediction_date: string;
-  prediction_time: string;
-  predicted_occupancy: number;
-  confidence: number;
+  predicted_for: string; // TIMESTAMPTZ
+  predicted_status: OccupancyStatus;
+  predicted_percent: number;
+  confidence: ConfidenceLevel;
+  confidence_lower: number | null;
+  confidence_upper: number | null;
   model_version: string | null;
   created_at: string;
 }
 
 export interface UserStats {
   user_id: string;
+  // Database fields
+  total_reports: number;
+  accurate_reports: number;
+  accuracy_rate: number;
+  consecutive_days: number;
+  last_report_date: string | null;
+  points: number;
+  achievements: string[];
+  reports_this_week: number;
+  reports_this_month: number;
+  updated_at: string;
+  // UI-compatible fields (computed or derived)
   total_trips: number;
   report_count: number;
   accuracy_score: number;
@@ -227,7 +265,6 @@ export interface UserStats {
   referral_code: string | null;
   referral_count: number;
   referred_by: string | null;
-  updated_at: string;
 }
 
 export interface ParkingTimer {
@@ -270,12 +307,26 @@ export interface LotWithStatusForPermit {
   lot_name: string;
   short_name: string | null;
   area: LotArea;
+  center: { lat: number; lng: number };
   occupancy_percent: number;
   status: OccupancyStatus;
   confidence: ConfidenceLevel;
+  trend?: Trend | null;
   is_valid_now: boolean;
   valid_after: string | null;
+  valid_permits: PermitType[];
   walk_times: Record<string, number>;
+  last_report_time?: string | null;
+}
+
+// ML Model storage
+export interface MLModel {
+  id: string;
+  model_type: string;
+  version: string;
+  model_weights: Record<string, unknown>;
+  is_active: boolean;
+  created_at: string;
 }
 
 // ============================================================
@@ -334,6 +385,11 @@ export interface Database {
         Row: EnforcementHotspot;
         Insert: Omit<EnforcementHotspot, 'id' | 'created_at'>;
         Update: Partial<Omit<EnforcementHotspot, 'id'>>;
+      };
+      ml_models: {
+        Row: MLModel;
+        Insert: Omit<MLModel, 'id' | 'created_at'>;
+        Update: Partial<Omit<MLModel, 'id'>>;
       };
     };
     Views: {

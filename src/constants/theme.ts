@@ -83,6 +83,7 @@ export const BorderRadius = {
   md: 12,
   lg: 16,
   xl: 20,
+  xxl: 24,
   full: 9999,
 } as const;
 
@@ -192,4 +193,37 @@ export const Animation = {
   fast: 150,
   normal: 250,
   slow: 400,
+} as const;
+
+// Colored Shadows
+export const ColoredShadows = {
+  scarlet: {
+    shadowColor: '#CC0000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  green: {
+    shadowColor: '#34C759',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+} as const;
+
+// Hit Slop for better touch targets
+export const HitSlop = {
+  small: { top: 8, bottom: 8, left: 8, right: 8 },
+  medium: { top: 12, bottom: 12, left: 12, right: 12 },
+  large: { top: 16, bottom: 16, left: 16, right: 16 },
+} as const;
+
+// Layout Constants
+export const Layout = {
+  screenPaddingHorizontal: 20,
+  screenPaddingVertical: 16,
+  cardPadding: 16,
+  listItemHeight: 52,
 } as const;

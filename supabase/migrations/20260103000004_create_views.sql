@@ -22,7 +22,7 @@ SELECT
   l.hours_start,
   l.hours_end,
   l.image_url,
-  COALESCE(ls.status, 'moderate'::occupancy_status) as status,
+  COALESCE(ls.status, 'busy'::occupancy_status) as status,
   COALESCE(ls.occupancy_percent, 50) as occupancy_percent,
   ls.estimated_spaces,
   COALESCE(ls.confidence, 'low'::confidence_level) as confidence,
@@ -190,9 +190,9 @@ SELECT
   COUNT(*) as lot_count,
   SUM(l.total_spaces) as total_spaces,
   SUM(CASE WHEN ls.status = 'full' THEN 1 ELSE 0 END) as full_lots,
-  SUM(CASE WHEN ls.status IN ('empty', 'light') THEN 1 ELSE 0 END) as available_lots,
+  SUM(CASE WHEN ls.status = 'open' THEN 1 ELSE 0 END) as available_lots,
   ROUND(AVG(COALESCE(ls.occupancy_percent, 50)), 1) as avg_occupancy,
-  MODE() WITHIN GROUP (ORDER BY COALESCE(ls.status, 'moderate'::occupancy_status)) as typical_status
+  MODE() WITHIN GROUP (ORDER BY COALESCE(ls.status, 'busy'::occupancy_status)) as typical_status
 FROM lots l
 LEFT JOIN lot_status ls ON l.id = ls.lot_id
 GROUP BY l.area

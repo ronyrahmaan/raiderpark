@@ -27,7 +27,7 @@ CREATE TABLE users (
   favorite_lots TEXT[] DEFAULT '{}',
 
   -- Gamification
-  reporter_level reporter_level DEFAULT 'newcomer',
+  reporter_level reporter_level DEFAULT 'newbie',
 
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -93,7 +93,7 @@ CREATE TABLE lot_status (
   lot_id TEXT NOT NULL REFERENCES lots(id) ON DELETE CASCADE,
 
   -- Current status
-  status occupancy_status NOT NULL DEFAULT 'moderate',
+  status occupancy_status NOT NULL DEFAULT 'busy',
   occupancy_percent INTEGER CHECK (occupancy_percent >= 0 AND occupancy_percent <= 100),
   estimated_spaces INTEGER,
 

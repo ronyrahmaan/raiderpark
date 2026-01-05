@@ -79,8 +79,8 @@ export function useSubmitReport() {
   return useMutation({
     mutationFn: (params: {
       lotId: string;
-      status: OccupancyStatus;
-      occupancyEstimate?: number;
+      occupancyStatus: OccupancyStatus;
+      occupancyPercent?: number;
       note?: string;
     }) => lotsService.submitReport(params),
     onSuccess: (_, variables) => {

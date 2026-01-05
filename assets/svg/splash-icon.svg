@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Splash icon - Authentic TTU Double-T with Parking Badge -->
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Authentic TTU Double-T -->
+  <g transform="translate(51, 51)">
+    <!-- LARGE T -->
+    <!-- Top horizontal bar -->
+    <rect x="25" y="25" width="358" height="77" fill="#FFFFFF"/>
+    <!-- Left serif -->
+    <rect x="25" y="0" width="51" height="38" fill="#FFFFFF"/>
+    <!-- Right serif -->
+    <rect x="333" y="0" width="51" height="38" fill="#FFFFFF"/>
+
+    <!-- Vertical bar -->
+    <rect x="166" y="102" width="77" height="307" fill="#FFFFFF"/>
+    <!-- Bottom serifs -->
+    <rect x="128" y="384" width="153" height="26" fill="#FFFFFF"/>
+
+    <!-- SMALL T (overlapping) -->
+    <rect x="102" y="166" width="204" height="38" fill="#FFFFFF"/>
+    <!-- Small T serifs -->
+    <rect x="89" y="153" width="38" height="26" fill="#FFFFFF"/>
+    <rect x="281" y="153" width="38" height="26" fill="#FFFFFF"/>
+
+    <!-- Shadow -->
+    <rect x="102" y="204" width="64" height="6" fill="#CC0000" opacity="0.3"/>
+    <rect x="243" y="204" width="64" height="6" fill="#CC0000" opacity="0.3"/>
+  </g>
+
+  <!-- Parking "P" Badge -->
+  <g transform="translate(332, 332)">
+    <circle cx="77" cy="77" r="77" fill="#FFFFFF"/>
+    <circle cx="77" cy="77" r="64" fill="#CC0000"/>
+    <path
+      d="M51 38 L51 115 L64 115 L64 89 L83 89 C102 89 115 79 115 64 C115 49 102 38 83 38 L51 38 Z M64 51 L77 51 C89 51 96 56 96 64 C96 72 89 77 77 77 L64 77 Z"
+      fill="#FFFFFF"
+    />
+  </g>
+</svg>

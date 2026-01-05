@@ -1,6 +1,7 @@
 // ============================================================
 // SCHEDULE SELECTION SCREEN
 // Premium iOS-first design for RaiderPark
+// Multi-class support with building selection
 // ============================================================
 
 import React, { useState, useCallback } from 'react';
@@ -17,57 +18,108 @@ import Animated, {
   FadeInDown,
   FadeInUp,
 } from 'react-native-reanimated';
-import { ChevronRight, ChevronLeft, Calendar } from 'lucide-react-native';
+import { SFIcon, SFIconName } from '@/components/ui/SFIcon';
 import * as Haptics from 'expo-haptics';
 import { Button } from '@/components/ui/Button';
+import { ScheduleEditor } from '@/components/features/ScheduleEditor';
+import { useAuthStore } from '@/stores/authStore';
+import { Schedule } from '@/types/database';
+import {
+  Colors,
+  BorderRadius,
+  Spacing,
+  FontSize,
+  FontWeight,
+  Shadows,
+} from '@/constants/theme';
 
-// Days and time slots for the grid
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-const FULL_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'] as const;
-const TIME_SLOTS = [
-  { id: 'early_morning', label: 'Early', time: '7-9 AM' },
-  { id: 'morning', label: 'Morning', time: '9-11 AM' },
-  { id: 'midday', label: 'Midday', time: '11-1 PM' },
-  { id: 'afternoon', label: 'Afternoon', time: '1-3 PM' },
-  { id: 'late_afternoon', label: 'Late', time: '3-5 PM' },
-  { id: 'evening', label: 'Evening', time: '5-7 PM' },
-];
-
-type DayKey = typeof FULL_DAYS[number];
-type TimeSlotId = typeof TIME_SLOTS[number]['id'];
-
-interface ScheduleSelection {
-  [day: string]: Set<string>;
+// Common schedule presets
+interface PresetInfo {
+  label: string;
+  icon: SFIconName;
+  schedule: Schedule;
 }
 
+const PRESETS: Record<string, PresetInfo> = {
+  mwf_morning: {
+    label: 'MWF Morning',
+    icon: 'sunrise',
+    schedule: {
+      monday: { classes: [{ start: '08:00', end: '09:15' }, { start: '09:30', end: '10:45' }] },
+      wednesday: { classes: [{ start: '08:00', end: '09:15' }, { start: '09:30', end: '10:45' }] },
+      friday: { classes: [{ start: '08:00', end: '09:15' }, { start: '09:30', end: '10:45' }] },
+    },
+  },
+  tr_afternoon: {
+    label: 'TR Afternoon',
+    icon: 'sun-max',
+    schedule: {
+      tuesday: { classes: [{ start: '12:30', end: '13:45' }, { start: '14:00', end: '15:15' }] },
+      thursday: { classes: [{ start: '12:30', end: '13:45' }, { start: '14:00', end: '15:15' }] },
+    },
+  },
+  full_week: {
+    label: 'Full Week',
+    icon: 'calendar',
+    schedule: {
+      monday: { classes: [{ start: '09:00', end: '10:15' }] },
+      tuesday: { classes: [{ start: '09:00', end: '10:15' }] },
+      wednesday: { classes: [{ start: '09:00', end: '10:15' }] },
+      thursday: { classes: [{ start: '09:00', end: '10:15' }] },
+      friday: { classes: [{ start: '09:00', end: '10:15' }] },
+    },
+  },
+  evening: {
+    label: 'Evening',
+    icon: 'moon',
+    schedule: {
+      monday: { classes: [{ start: '18:00', end: '20:45' }] },
+      wednesday: { classes: [{ start: '18:00', end: '20:45' }] },
+    },
+  },
+};
+
+type PresetKey = keyof typeof PRESETS;
+
 export default function ScheduleScreen() {
-  const [schedule, setSchedule] = useState<ScheduleSelection>(() => {
-    const initial: ScheduleSelection = {};
-    FULL_DAYS.forEach((day) => {
-      initial[day] = new Set();
-    });
-    return initial;
-  });
+  const { appUser, updateSchedule } = useAuthStore();
+  const [schedule, setSchedule] = useState<Schedule>(appUser?.schedule ?? {});
+  const [isSaving, setIsSaving] = useState(false);
+  const [activePreset, setActivePreset] = useState<PresetKey | null>(null);
 
-  const toggleSlot = useCallback((day: DayKey, slotId: TimeSlotId) => {
-    Haptics.selectionAsync();
-    setSchedule((prev) => {
-      const newSchedule = { ...prev };
-      const daySet = new Set(prev[day]);
-
-      if (daySet.has(slotId)) {
-        daySet.delete(slotId);
-      } else {
-        daySet.add(slotId);
-      }
-
-      newSchedule[day] = daySet;
-      return newSchedule;
-    });
+  const handlePreset = useCallback((presetKey: PresetKey) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const preset = PRESETS[presetKey];
+    setSchedule(preset.schedule);
+    setActivePreset(presetKey);
   }, []);
 
-  const handleContinue = () => {
-    // TODO: Save schedule to store/backend
+  const handleClearAll = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSchedule({});
+    setActivePreset(null);
+  }, []);
+
+  const handleScheduleChange = useCallback((newSchedule: Schedule) => {
+    setSchedule(newSchedule);
+    setActivePreset(null); // Clear preset when manually editing
+  }, []);
+
+  const handleContinue = async () => {
+    // Save schedule to Supabase via authStore
+    if (Object.keys(schedule).length > 0) {
+      setIsSaving(true);
+      try {
+        await updateSchedule(schedule);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch (error) {
+        console.error('Error saving schedule:', error);
+        // Continue anyway - schedule can be set later
+      } finally {
+        setIsSaving(false);
+      }
+    }
+
     router.push('/onboarding/notifications');
   };
 
@@ -79,244 +131,163 @@ export default function ScheduleScreen() {
     router.back();
   };
 
-  // Count total selected slots
-  const totalSelected = Object.values(schedule).reduce(
-    (acc, set) => acc + set.size,
+  // Count total classes
+  const totalClasses = Object.values(schedule).reduce(
+    (acc, day) => acc + (day?.classes?.length ?? 0),
     0
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView style={styles.container}>
       {/* Header */}
       <Animated.View
         entering={FadeInDown.duration(600)}
-        className="px-6 pt-4 pb-2"
+        style={styles.header}
       >
         {/* Back Button */}
-        <Pressable
-          onPress={handleBack}
-          className="flex-row items-center -ml-2 mb-4"
-        >
-          <ChevronLeft size={24} color="#CC0000" />
-          <Text className="text-base text-scarlet-500">Back</Text>
+        <Pressable onPress={handleBack} style={styles.backButton}>
+          <SFIcon name="chevron-left" size={24} color={Colors.scarlet[500]} />
+          <Text style={styles.backButtonText}>Back</Text>
         </Pressable>
 
         {/* Progress Indicator */}
-        <View className="flex-row gap-2 mb-6">
+        <View style={styles.progressContainer}>
           {[1, 2, 3, 4].map((step, index) => (
             <View
               key={step}
-              className={`flex-1 h-1 rounded-full ${
-                index <= 1 ? 'bg-scarlet-500' : 'bg-ios-gray5'
-              }`}
+              style={[
+                styles.progressStep,
+                index <= 1 ? styles.progressStepActive : styles.progressStepInactive,
+              ]}
             />
           ))}
         </View>
 
-        <View className="flex-row items-center mb-2">
-          <Calendar size={28} color="#CC0000" strokeWidth={2} className="mr-3" />
-          <Text className="text-3xl font-bold text-black flex-1">
-            When do you usually need parking?
+        <View style={styles.titleRow}>
+          <SFIcon name="calendar" size={28} color={Colors.scarlet[500]} style={styles.titleIcon} />
+          <Text style={styles.title}>
+            Add Your Class Schedule
           </Text>
         </View>
-        <Text className="text-base text-ios-gray">
-          Helps us predict the best times for you
+        <Text style={styles.subtitle}>
+          We'll predict parking availability for your classes
         </Text>
       </Animated.View>
 
-      {/* Schedule Grid */}
+      {/* Schedule Content */}
       <ScrollView
-        className="flex-1"
-        contentContainerClassName="px-6 py-4"
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Quick Presets */}
         <Animated.View
-          entering={FadeInUp.delay(200).duration(600)}
-          className="bg-ios-gray6 rounded-2xl p-4"
+          entering={FadeInUp.delay(200).duration(400)}
+          style={styles.presetsSection}
         >
-          {/* Day Headers */}
-          <View className="flex-row mb-3">
-            <View className="w-16" />
-            {DAYS.map((day) => (
-              <View key={day} className="flex-1 items-center">
-                <Text className="text-xs font-semibold text-ios-gray uppercase">
-                  {day}
-                </Text>
-              </View>
-            ))}
+          <View style={styles.presetHeader}>
+            <Text style={styles.presetsTitle}>Quick Presets</Text>
+            {Object.keys(schedule).length > 0 && (
+              <Pressable onPress={handleClearAll}>
+                <Text style={styles.clearAllText}>Clear All</Text>
+              </Pressable>
+            )}
           </View>
-
-          {/* Time Slot Rows */}
-          {TIME_SLOTS.map((slot, slotIndex) => (
-            <Animated.View
-              key={slot.id}
-              entering={FadeInUp.delay(300 + slotIndex * 50).duration(400)}
-              className="flex-row items-center mb-2"
-            >
-              {/* Time Label */}
-              <View className="w-16">
-                <Text className="text-xs font-medium text-black">
-                  {slot.label}
-                </Text>
-                <Text className="text-[10px] text-ios-gray">
-                  {slot.time}
-                </Text>
-              </View>
-
-              {/* Day Cells */}
-              {FULL_DAYS.map((day, dayIndex) => {
-                const isSelected = schedule[day].has(slot.id);
-                return (
-                  <View key={day} className="flex-1 px-0.5">
-                    <Pressable
-                      onPress={() => toggleSlot(day, slot.id as TimeSlotId)}
-                      className={`h-10 rounded-lg items-center justify-center ${
-                        isSelected
-                          ? 'bg-scarlet-500'
-                          : 'bg-white border border-ios-gray4'
-                      }`}
-                      style={isSelected ? styles.selectedCell : undefined}
-                    >
-                      {isSelected && (
-                        <View className="w-2 h-2 bg-white rounded-full" />
-                      )}
-                    </Pressable>
-                  </View>
-                );
-              })}
-            </Animated.View>
-          ))}
+          <View style={styles.presetsRow}>
+            {(Object.keys(PRESETS) as PresetKey[]).map((key) => {
+              const preset = PRESETS[key];
+              const isActive = activePreset === key;
+              return (
+                <Pressable
+                  key={key}
+                  onPress={() => handlePreset(key)}
+                  style={[
+                    styles.presetButton,
+                    isActive && styles.presetButtonActive,
+                  ]}
+                >
+                  <SFIcon
+                    name={preset.icon}
+                    size={16}
+                    color={isActive ? Colors.scarlet[600] : Colors.gray[2]}
+                  />
+                  <Text style={[
+                    styles.presetButtonText,
+                    isActive && styles.presetButtonTextActive,
+                  ]}>
+                    {preset.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </Animated.View>
 
-        {/* Selection Summary */}
-        {totalSelected > 0 && (
+        {/* Schedule Editor */}
+        <Animated.View
+          entering={FadeInUp.delay(300).duration(400)}
+          style={styles.editorSection}
+        >
+          <Text style={styles.sectionTitle}>YOUR SCHEDULE</Text>
+          <ScheduleEditor
+            schedule={schedule}
+            onChange={handleScheduleChange}
+            showWeekend={false}
+            showBuildings={true}
+          />
+        </Animated.View>
+
+        {/* Summary */}
+        {totalClasses > 0 && (
           <Animated.View
-            entering={FadeInUp.delay(500).duration(400)}
-            className="mt-4 p-4 bg-scarlet-50 rounded-xl"
+            entering={FadeInUp.delay(400).duration(400)}
+            style={styles.summaryCard}
           >
-            <Text className="text-sm text-scarlet-700">
-              <Text className="font-semibold">{totalSelected}</Text> time slots selected.{' '}
-              We'll prioritize showing parking availability during these times.
-            </Text>
+            <View style={styles.summaryIcon}>
+              <SFIcon name="checkmark-circle-fill" size={24} color={Colors.ios.green} />
+            </View>
+            <View style={styles.summaryContent}>
+              <Text style={styles.summaryTitle}>
+                {totalClasses} class{totalClasses !== 1 ? 'es' : ''} added
+              </Text>
+              <Text style={styles.summaryText}>
+                We'll notify you about parking before each class
+              </Text>
+            </View>
           </Animated.View>
         )}
 
-        {/* Common Schedules */}
+        {/* Tip Card */}
         <Animated.View
-          entering={FadeInUp.delay(600).duration(400)}
-          className="mt-6"
+          entering={FadeInUp.delay(500).duration(400)}
+          style={styles.tipCard}
         >
-          <Text className="text-sm font-semibold text-ios-gray uppercase tracking-wider mb-3">
-            Quick Presets
+          <SFIcon name="lightbulb" size={20} color={Colors.ios.orange} />
+          <Text style={styles.tipText}>
+            Adding class end times helps us predict when parking opens up for others
           </Text>
-          <View className="flex-row flex-wrap gap-2">
-            <PresetButton
-              label="MWF Morning"
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setSchedule((prev) => {
-                  const newSchedule = { ...prev };
-                  ['monday', 'wednesday', 'friday'].forEach((day) => {
-                    newSchedule[day] = new Set(['early_morning', 'morning']);
-                  });
-                  return newSchedule;
-                });
-              }}
-            />
-            <PresetButton
-              label="TR Afternoon"
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setSchedule((prev) => {
-                  const newSchedule = { ...prev };
-                  ['tuesday', 'thursday'].forEach((day) => {
-                    newSchedule[day] = new Set(['afternoon', 'late_afternoon']);
-                  });
-                  return newSchedule;
-                });
-              }}
-            />
-            <PresetButton
-              label="Full Week"
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setSchedule((prev) => {
-                  const newSchedule = { ...prev };
-                  FULL_DAYS.forEach((day) => {
-                    newSchedule[day] = new Set(['morning', 'midday', 'afternoon']);
-                  });
-                  return newSchedule;
-                });
-              }}
-            />
-            <PresetButton
-              label="Clear All"
-              variant="outline"
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setSchedule((prev) => {
-                  const newSchedule = { ...prev };
-                  FULL_DAYS.forEach((day) => {
-                    newSchedule[day] = new Set();
-                  });
-                  return newSchedule;
-                });
-              }}
-            />
-          </View>
         </Animated.View>
 
         {/* Bottom Spacing */}
-        <View className="h-32" />
+        <View style={styles.bottomSpacer} />
       </ScrollView>
 
       {/* Bottom CTA */}
-      <View style={styles.bottomCTA} className="px-6 pt-4 pb-6 bg-white border-t border-ios-gray5">
+      <View style={styles.bottomCTA}>
         <Button
-          title="Continue"
+          title={isSaving ? 'Saving...' : 'Continue'}
           variant="primary"
           size="xl"
           fullWidth
           onPress={handleContinue}
-          className="rounded-2xl"
-          rightIcon={<ChevronRight size={20} color="#FFFFFF" />}
+          disabled={isSaving}
+          rightIcon={!isSaving ? <SFIcon name="chevron-right" size={20} color={Colors.light.background} /> : undefined}
         />
-        <Pressable onPress={handleSkip} className="mt-3 py-2">
-          <Text className="text-base text-ios-gray text-center">Skip for now</Text>
+        <Pressable onPress={handleSkip} style={styles.skipButton}>
+          <Text style={styles.skipButtonText}>Skip for now</Text>
         </Pressable>
       </View>
     </SafeAreaView>
-  );
-}
-
-// ============================================================
-// PRESET BUTTON COMPONENT
-// ============================================================
-
-interface PresetButtonProps {
-  label: string;
-  variant?: 'filled' | 'outline';
-  onPress: () => void;
-}
-
-function PresetButton({ label, variant = 'filled', onPress }: PresetButtonProps) {
-  return (
-    <Pressable
-      onPress={onPress}
-      className={`px-4 py-2 rounded-full ${
-        variant === 'filled'
-          ? 'bg-scarlet-100'
-          : 'bg-transparent border border-ios-gray4'
-      }`}
-    >
-      <Text
-        className={`text-sm font-medium ${
-          variant === 'filled' ? 'text-scarlet-700' : 'text-ios-gray'
-        }`}
-      >
-        {label}
-      </Text>
-    </Pressable>
   );
 }
 
@@ -325,18 +296,205 @@ function PresetButton({ label, variant = 'filled', onPress }: PresetButtonProps)
 // ============================================================
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.gray[6],
+  },
+  header: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.sm,
+    backgroundColor: Colors.light.background,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.gray[5],
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: -Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  backButtonText: {
+    fontSize: FontSize.lg,
+    color: Colors.scarlet[500],
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
+  progressStep: {
+    flex: 1,
+    height: 4,
+    borderRadius: BorderRadius.full,
+  },
+  progressStepActive: {
+    backgroundColor: Colors.scarlet[500],
+  },
+  progressStepInactive: {
+    backgroundColor: Colors.gray[5],
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  titleIcon: {
+    marginRight: Spacing.md,
+  },
+  title: {
+    flex: 1,
+    fontSize: 26,
+    fontWeight: FontWeight.bold,
+    color: Colors.light.text,
+  },
+  subtitle: {
+    fontSize: FontSize.md,
+    color: Colors.gray[1],
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingVertical: Spacing.md,
+  },
+
+  // Presets Section
+  presetsSection: {
+    paddingHorizontal: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  presetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  presetsTitle: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semibold,
+    color: Colors.gray[2],
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  clearAllText: {
+    fontSize: FontSize.sm,
+    color: Colors.ios.blue,
+    fontWeight: FontWeight.medium,
+  },
+  presetsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+  },
+  presetButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.light.background,
+    gap: Spacing.xs,
+    ...Shadows.sm,
+  },
+  presetButtonActive: {
+    backgroundColor: Colors.scarlet[50],
+    borderWidth: 1,
+    borderColor: Colors.scarlet[200],
+  },
+  presetButtonText: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.medium,
+    color: Colors.gray[1],
+  },
+  presetButtonTextActive: {
+    color: Colors.scarlet[600],
+  },
+
+  // Editor Section
+  editorSection: {
+    paddingHorizontal: Spacing.md,
+  },
+  sectionTitle: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semibold,
+    color: Colors.gray[2],
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: Spacing.sm,
+    marginLeft: Spacing.xs,
+  },
+
+  // Summary Card
+  summaryCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.ios.green + '10',
+    marginHorizontal: Spacing.md,
+    marginTop: Spacing.lg,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: Colors.ios.green + '30',
+  },
+  summaryIcon: {
+    marginRight: Spacing.md,
+  },
+  summaryContent: {
+    flex: 1,
+  },
+  summaryTitle: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+    color: Colors.light.text,
+  },
+  summaryText: {
+    fontSize: FontSize.sm,
+    color: Colors.gray[1],
+    marginTop: 2,
+  },
+
+  // Tip Card
+  tipCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.ios.orange + '10',
+    marginHorizontal: Spacing.md,
+    marginTop: Spacing.md,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    gap: Spacing.sm,
+  },
+  tipText: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    color: Colors.gray[1],
+    lineHeight: 18,
+  },
+
+  bottomSpacer: {
+    height: 140,
+  },
   bottomCTA: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.lg,
+    backgroundColor: Colors.light.background,
+    borderTopWidth: 1,
+    borderTopColor: Colors.gray[5],
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 8,
   },
-  selectedCell: {
-    shadowColor: '#CC0000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
+  skipButton: {
+    marginTop: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  skipButtonText: {
+    fontSize: FontSize.lg,
+    color: Colors.gray[1],
+    textAlign: 'center',
   },
 });

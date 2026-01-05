@@ -20,7 +20,11 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "RaiderPark needs your location to show nearby parking lots and detect when you park.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "RaiderPark uses background location to auto-detect when you park and send timely departure reminders.",
-        "UIBackgroundModes": ["location", "fetch", "remote-notification"]
+        "UIBackgroundModes": [
+          "location",
+          "fetch",
+          "remote-notification"
+        ]
       },
       "config": {
         "usesNonExemptEncryption": false
@@ -39,7 +43,12 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION",
         "RECEIVE_BOOT_COMPLETED",
-        "VIBRATE"
+        "VIBRATE",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION"
       ]
     },
     "web": {
@@ -61,8 +70,7 @@
         "expo-notifications",
         {
           "icon": "./assets/notification-icon.png",
-          "color": "#CC0000",
-          "sounds": ["./assets/sounds/notification.wav"]
+          "color": "#CC0000"
         }
       ],
       [
@@ -78,9 +86,13 @@
       "typedRoutes": true
     },
     "extra": {
+      "router": {
+        "origin": false
+      },
       "eas": {
-        "projectId": "raiderpark"
+        "projectId": "81ce1981-c76a-4628-9ec6-adbbaef31b72"
       }
-    }
+    },
+    "owner": "mdarahman"
   }
 }

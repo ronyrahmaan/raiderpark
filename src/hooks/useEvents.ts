@@ -96,8 +96,8 @@ export function useIsLotAffected(lotId: string) {
   const { data: activeEvents } = useActiveEvents();
 
   return {
-    isAffected: activeEvents?.some(event => event.affected_lots.includes(lotId)) ?? false,
-    affectingEvents: activeEvents?.filter(event => event.affected_lots.includes(lotId)) ?? [],
+    isAffected: activeEvents?.some(event => event.affected_lot_ids.includes(lotId)) ?? false,
+    affectingEvents: activeEvents?.filter(event => event.affected_lot_ids.includes(lotId)) ?? [],
   };
 }
 

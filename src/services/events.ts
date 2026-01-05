@@ -17,8 +17,8 @@ export async function getUpcomingEvents(): Promise<ParkingEvent[]> {
   const { data, error } = await supabase
     .from('events')
     .select('*')
-    .gte('end_time', new Date().toISOString())
-    .order('start_time', { ascending: true });
+    .gte('ends_at', new Date().toISOString())
+    .order('starts_at', { ascending: true });
 
   if (error) throw new Error(`Failed to fetch events: ${error.message}`);
   return data ?? [];
@@ -43,9 +43,9 @@ export async function getEventsForLot(lotId: string): Promise<ParkingEvent[]> {
   const { data, error } = await supabase
     .from('events')
     .select('*')
-    .contains('affected_lots', [lotId])
-    .gte('end_time', new Date().toISOString())
-    .order('start_time', { ascending: true });
+    .contains('affected_lot_ids', [lotId])
+    .gte('ends_at', new Date().toISOString())
+    .order('starts_at', { ascending: true });
 
   if (error) throw new Error(`Failed to fetch events for lot: ${error.message}`);
   return data ?? [];
@@ -59,8 +59,8 @@ export async function getEventsByType(eventType: EventType): Promise<ParkingEven
     .from('events')
     .select('*')
     .eq('event_type', eventType)
-    .gte('end_time', new Date().toISOString())
-    .order('start_time', { ascending: true });
+    .gte('ends_at', new Date().toISOString())
+    .order('starts_at', { ascending: true });
 
   if (error) throw new Error(`Failed to fetch events by type: ${error.message}`);
   return data ?? [];
@@ -76,9 +76,9 @@ export async function getEventsInRange(
   const { data, error } = await supabase
     .from('events')
     .select('*')
-    .gte('start_time', startDate.toISOString())
-    .lte('end_time', endDate.toISOString())
-    .order('start_time', { ascending: true });
+    .gte('starts_at', startDate.toISOString())
+    .lte('ends_at', endDate.toISOString())
+    .order('starts_at', { ascending: true });
 
   if (error) throw new Error(`Failed to fetch events in range: ${error.message}`);
   return data ?? [];
@@ -110,7 +110,7 @@ export async function getEventById(eventId: string): Promise<ParkingEvent | null
  */
 export async function isLotAffectedByEvent(lotId: string): Promise<boolean> {
   const activeEvents = await getActiveEvents();
-  return activeEvents.some(event => event.affected_lots.includes(lotId));
+  return activeEvents.some(event => event.affected_lot_ids.includes(lotId));
 }
 
 /**
@@ -122,14 +122,16 @@ export async function getNextEventForPermitLots(
   const { data, error } = await supabase
     .from('events')
     .select('*')
-    .gte('start_time', new Date().toISOString())
-    .order('start_time', { ascending: true });
+    .gte('starts_at', new Date().toISOString())
+    .order('starts_at', { ascending: true });
 
   if (error) throw new Error(`Failed to fetch next event: ${error.message}`);
 
+  const events = (data ?? []) as ParkingEvent[];
+
   // Find first event that affects any of the user's lots
-  const affectingEvent = data?.find(event =>
-    event.affected_lots.some(lot => permitLots.includes(lot))
+  const affectingEvent = events.find(event =>
+    event.affected_lot_ids.some((lot: string) => permitLots.includes(lot))
   );
 
   return affectingEvent ?? null;
@@ -151,6 +153,12 @@ export const EVENT_TYPE_INFO = {
     icon: '🏀',
     color: '#FF6B00',
     description: 'Arena lots may be affected',
+  },
+  baseball: {
+    label: 'Baseball Game',
+    icon: '⚾',
+    color: '#EF4444',
+    description: 'Dan Law Field area affected',
   },
   concert: {
     label: 'Concert',

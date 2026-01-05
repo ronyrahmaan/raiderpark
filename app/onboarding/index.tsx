@@ -17,28 +17,26 @@ import Animated, {
   FadeInDown,
   FadeInUp,
 } from 'react-native-reanimated';
-import { MapPin, Car, Clock, Bell } from 'lucide-react-native';
+import { SFIcon } from '@/components/ui/SFIcon';
 import { Button } from '@/components/ui/Button';
-import { useAuthStore } from '@/stores/authStore';
+import { Logo } from '@/components/ui/Logo';
+import { Colors, BorderRadius, Shadows } from '@/constants/theme';
 
-const { width, height } = Dimensions.get('window');
+const { height } = Dimensions.get('window');
 
 export default function WelcomeScreen() {
-  const { setIsOnboarded } = useAuthStore();
-
   const handleGetStarted = () => {
     router.push('/auth/login');
   };
 
   const handleGuestMode = () => {
-    // Set up guest mode and go to permit selection
     router.push('/onboarding/permit');
   };
 
   return (
-    <View className="flex-1 bg-white">
+    <View style={styles.container}>
       {/* Hero Illustration Area */}
-      <View className="flex-1 relative">
+      <View style={styles.heroSection}>
         {/* Gradient Background */}
         <LinearGradient
           colors={['#FFE5E5', '#FFF5F5', '#FFFFFF']}
@@ -48,26 +46,26 @@ export default function WelcomeScreen() {
         />
 
         {/* Decorative Elements */}
-        <View className="flex-1 items-center justify-center">
+        <View style={styles.heroContent}>
           {/* Floating Icons Animation */}
           <Animated.View
             entering={FadeInUp.delay(200).duration(800)}
             style={styles.iconContainer}
           >
-            <View className="flex-row justify-center items-center gap-8 mb-12">
+            <View style={styles.iconsRow}>
               <View style={styles.floatingIcon}>
-                <View className="bg-scarlet-100 p-4 rounded-2xl">
-                  <MapPin size={32} color="#CC0000" strokeWidth={2} />
+                <View style={[styles.iconBox, styles.iconBoxScarlet]}>
+                  <SFIcon name="pin" size={32} color={Colors.scarlet[500]} />
                 </View>
               </View>
-              <View style={[styles.floatingIcon, { marginTop: -20 }]}>
-                <View className="bg-ios-green/10 p-4 rounded-2xl">
-                  <Car size={32} color="#34C759" strokeWidth={2} />
+              <View style={[styles.floatingIcon, styles.floatingIconOffset]}>
+                <View style={[styles.iconBox, styles.iconBoxGreen]}>
+                  <SFIcon name="car" size={32} color={Colors.ios.green} />
                 </View>
               </View>
               <View style={styles.floatingIcon}>
-                <View className="bg-ios-blue/10 p-4 rounded-2xl">
-                  <Clock size={32} color="#007AFF" strokeWidth={2} />
+                <View style={[styles.iconBox, styles.iconBoxBlue]}>
+                  <SFIcon name="clock" size={32} color={Colors.ios.blue} />
                 </View>
               </View>
             </View>
@@ -76,32 +74,29 @@ export default function WelcomeScreen() {
           {/* Main Logo Area */}
           <Animated.View
             entering={FadeInUp.delay(400).duration(800)}
-            className="items-center px-8"
+            style={styles.logoArea}
           >
-            {/* Large Parking Icon */}
-            <View className="mb-6">
-              <View className="bg-scarlet-500 w-24 h-24 rounded-3xl items-center justify-center" style={styles.logoShadow}>
-                <Text className="text-white text-5xl font-bold">P</Text>
-              </View>
+            <View style={styles.logoContainer}>
+              <Logo size={96} variant="icon" showBackground={true} />
             </View>
           </Animated.View>
         </View>
       </View>
 
       {/* Content Area */}
-      <SafeAreaView className="px-6 pb-4">
+      <SafeAreaView style={styles.contentArea}>
         <Animated.View
           entering={FadeInDown.delay(600).duration(800)}
-          className="items-center mb-8"
+          style={styles.brandingSection}
         >
           {/* Brand Name */}
-          <Text className="text-4xl font-bold tracking-tight mb-2">
-            <Text className="text-scarlet-500">RAIDER</Text>
-            <Text className="text-black"> PARK</Text>
+          <Text style={styles.brandName}>
+            <Text style={styles.brandScarlet}>RAIDER</Text>
+            <Text style={styles.brandBlack}> PARK</Text>
           </Text>
 
           {/* Tagline */}
-          <Text className="text-lg text-ios-gray text-center">
+          <Text style={styles.tagline}>
             Never circle a lot again
           </Text>
         </Animated.View>
@@ -109,17 +104,17 @@ export default function WelcomeScreen() {
         {/* Feature Pills */}
         <Animated.View
           entering={FadeInDown.delay(700).duration(800)}
-          className="flex-row flex-wrap justify-center gap-2 mb-10"
+          style={styles.featurePillsContainer}
         >
-          <FeaturePill icon={<MapPin size={14} color="#CC0000" />} text="Real-time availability" />
-          <FeaturePill icon={<Bell size={14} color="#CC0000" />} text="Smart alerts" />
-          <FeaturePill icon={<Clock size={14} color="#CC0000" />} text="Crowd predictions" />
+          <FeaturePill icon={<SFIcon name="pin" size={14} color={Colors.scarlet[500]} />} text="Real-time availability" />
+          <FeaturePill icon={<SFIcon name="bell" size={14} color={Colors.scarlet[500]} />} text="Smart alerts" />
+          <FeaturePill icon={<SFIcon name="clock" size={14} color={Colors.scarlet[500]} />} text="Crowd predictions" />
         </Animated.View>
 
         {/* CTA Buttons */}
         <Animated.View
           entering={FadeInDown.delay(800).duration(800)}
-          className="gap-3"
+          style={styles.buttonsContainer}
         >
           <Button
             title="Get Started with TTU Email"
@@ -127,7 +122,7 @@ export default function WelcomeScreen() {
             size="xl"
             fullWidth
             onPress={handleGetStarted}
-            className="rounded-2xl"
+            style={styles.primaryButton}
           />
 
           <Button
@@ -136,16 +131,16 @@ export default function WelcomeScreen() {
             size="lg"
             fullWidth
             onPress={handleGuestMode}
-            textClassName="text-ios-gray"
+            textStyle={styles.ghostButtonText}
           />
         </Animated.View>
 
         {/* Terms Notice */}
         <Animated.View
           entering={FadeInDown.delay(900).duration(800)}
-          className="mt-4"
+          style={styles.termsContainer}
         >
-          <Text className="text-xs text-ios-gray3 text-center leading-5">
+          <Text style={styles.termsText}>
             By continuing, you agree to our Terms of Service and Privacy Policy
           </Text>
         </Animated.View>
@@ -165,9 +160,9 @@ interface FeaturePillProps {
 
 function FeaturePill({ icon, text }: FeaturePillProps) {
   return (
-    <View className="flex-row items-center bg-scarlet-50 px-3 py-2 rounded-full">
-      <View className="mr-1.5">{icon}</View>
-      <Text className="text-sm font-medium text-scarlet-700">{text}</Text>
+    <View style={styles.featurePill}>
+      <View style={styles.featurePillIcon}>{icon}</View>
+      <Text style={styles.featurePillText}>{text}</Text>
     </View>
   );
 }
@@ -177,22 +172,125 @@ function FeaturePill({ icon, text }: FeaturePillProps) {
 // ============================================================
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  heroSection: {
+    flex: 1,
+    position: 'relative',
+  },
+  heroContent: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   iconContainer: {
     position: 'absolute',
     top: height * 0.08,
   },
-  floatingIcon: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+  iconsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 32,
+    marginBottom: 48,
   },
-  logoShadow: {
-    shadowColor: '#CC0000',
+  floatingIcon: {
+    ...Shadows.md,
+  },
+  floatingIconOffset: {
+    marginTop: -20,
+  },
+  iconBox: {
+    padding: 16,
+    borderRadius: BorderRadius.xl,
+  },
+  iconBoxScarlet: {
+    backgroundColor: Colors.scarlet[100],
+  },
+  iconBoxGreen: {
+    backgroundColor: 'rgba(52, 199, 89, 0.1)',
+  },
+  iconBoxBlue: {
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+  },
+  logoArea: {
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  logoContainer: {
+    marginBottom: 24,
+    shadowColor: Colors.scarlet[500],
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
     elevation: 8,
+  },
+  contentArea: {
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+  },
+  brandingSection: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  brandName: {
+    fontSize: 40,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+    marginBottom: 8,
+  },
+  brandScarlet: {
+    color: Colors.scarlet[500],
+  },
+  brandBlack: {
+    color: '#000000',
+  },
+  tagline: {
+    fontSize: 18,
+    color: Colors.gray[1],
+    textAlign: 'center',
+  },
+  featurePillsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 40,
+  },
+  featurePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.scarlet[50],
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 9999,
+  },
+  featurePillIcon: {
+    marginRight: 6,
+  },
+  featurePillText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: Colors.scarlet[700],
+  },
+  buttonsContainer: {
+    gap: 12,
+  },
+  primaryButton: {
+    borderRadius: 16,
+  },
+  ghostButtonText: {
+    color: Colors.gray[1],
+  },
+  termsContainer: {
+    marginTop: 16,
+  },
+  termsText: {
+    fontSize: 12,
+    color: Colors.gray[3],
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

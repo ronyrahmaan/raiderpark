@@ -38,10 +38,10 @@ export async function getLotsForPermit(
 ): Promise<LotWithStatusForPermit[]> {
   const { data, error } = await supabase.rpc('get_lots_with_status', {
     p_permit_type: permitType,
-  });
+  } as any);
 
   if (error) throw new Error(`Failed to fetch lots for permit: ${error.message}`);
-  return data ?? [];
+  return (data ?? []) as LotWithStatusForPermit[];
 }
 
 /**
@@ -92,10 +92,10 @@ export async function isPermitValidForLot(
     p_lot_id: lotId,
     p_permit_type: permitType,
     p_check_time: checkTime?.toISOString(),
-  });
+  } as any);
 
   if (error) throw new Error(`Failed to check permit validity: ${error.message}`);
-  return data ?? false;
+  return (data ?? false) as boolean;
 }
 
 // ============================================================
@@ -107,8 +107,8 @@ export async function isPermitValidForLot(
  */
 export async function submitReport(params: {
   lotId: string;
-  status: OccupancyStatus;
-  occupancyEstimate?: number;
+  occupancyStatus: OccupancyStatus;
+  occupancyPercent?: number;
   note?: string;
   location?: { lat: number; lng: number };
   isGeofenceTriggered?: boolean;
@@ -121,19 +121,19 @@ export async function submitReport(params: {
       user_id: user?.id,
       lot_id: params.lotId,
       report_type: 'status_report',
-      status: params.status,
-      occupancy_estimate: params.occupancyEstimate,
+      occupancy_status: params.occupancyStatus,
+      occupancy_percent: params.occupancyPercent,
       note: params.note,
       location: params.location
         ? `POINT(${params.location.lng} ${params.location.lat})`
         : null,
       is_geofence_triggered: params.isGeofenceTriggered ?? false,
-    })
+    } as any)
     .select()
     .single();
 
   if (error) throw new Error(`Failed to submit report: ${error.message}`);
-  return data;
+  return data as Report;
 }
 
 /**
@@ -155,12 +155,12 @@ export async function reportParked(
         ? `POINT(${location.lng} ${location.lat})`
         : null,
       is_geofence_triggered: false,
-    })
+    } as any)
     .select()
     .single();
 
   if (error) throw new Error(`Failed to submit parked report: ${error.message}`);
-  return data;
+  return data as Report;
 }
 
 /**
@@ -182,12 +182,12 @@ export async function reportLeft(
         ? `POINT(${location.lng} ${location.lat})`
         : null,
       is_geofence_triggered: false,
-    })
+    } as any)
     .select()
     .single();
 
   if (error) throw new Error(`Failed to submit left report: ${error.message}`);
-  return data;
+  return data as Report;
 }
 
 /**
@@ -228,7 +228,8 @@ export function subscribeToLotStatus(
         table: 'lot_status',
       },
       (payload) => {
-        callback(payload.new.lot_id, payload.new);
+        const newData = payload.new as { lot_id: string; [key: string]: unknown };
+        callback(newData.lot_id, newData);
       }
     )
     .subscribe();

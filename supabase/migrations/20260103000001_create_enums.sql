@@ -14,36 +14,42 @@ DROP TYPE IF EXISTS event_type CASCADE;
 DROP TYPE IF EXISTS report_type CASCADE;
 DROP TYPE IF EXISTS reporter_level CASCADE;
 
--- Permit types for TTU parking
+-- Permit types for TTU parking (matching app's permit options)
 CREATE TYPE permit_type AS ENUM (
   'commuter_west',
   'commuter_north',
-  'commuter_east',
-  'residence_halls',
-  'reserved',
-  'visitor',
+  'commuter_satellite',
+  'residence_z1',
+  'residence_z2',
+  'residence_z3',
+  'residence_z4',
+  'residence_z5',
+  'residence_z6',
   'faculty_staff',
-  'motorcycle',
-  'ev',
-  'accessible'
+  'garage_flint',
+  'garage_raider',
+  'visitor',
+  'none'
 );
 
--- Campus areas
+-- Campus areas (matching app's lot groupings)
 CREATE TYPE lot_area AS ENUM (
-  'west',
-  'north',
-  'east',
-  'central',
-  'south'
+  'commuter_west',   -- West commuter lots (C11-C16)
+  'commuter_north',  -- North commuter lots (C1-C10)
+  'satellite',       -- Remote satellite lots (S1)
+  'residence',       -- Residence hall parking
+  'garage',          -- Parking garages
+  'metered',         -- Pay-per-use metered spots
+  'faculty'          -- Faculty/staff only
 );
 
--- Parking lot occupancy levels
+-- Parking lot occupancy levels (matching app's status indicators)
 CREATE TYPE occupancy_status AS ENUM (
-  'empty',    -- 0-20% full
-  'light',    -- 20-40% full
-  'moderate', -- 40-60% full
-  'busy',     -- 60-80% full
-  'full'      -- 80-100% full
+  'open',     -- 0-40% full (easy to find spot)
+  'busy',     -- 40-60% full (moderate difficulty)
+  'filling',  -- 60-80% full (getting difficult)
+  'full',     -- 80-100% full (very hard)
+  'closed'    -- Lot is closed
 );
 
 -- Confidence level for predictions/reports
@@ -54,32 +60,36 @@ CREATE TYPE confidence_level AS ENUM (
   'verified'  -- Verified by trusted source
 );
 
--- Types of events that affect parking
+-- Types of events that affect parking (matching app's event categories)
 CREATE TYPE event_type AS ENUM (
   'football',
   'basketball',
   'baseball',
   'concert',
   'graduation',
-  'special_event',
+  'university',   -- General university events
   'icing',        -- Weather-related closure
-  'construction'
+  'construction',
+  'other'         -- Misc events
 );
 
--- Types of user reports
+-- Types of user reports (matching app's report options)
 CREATE TYPE report_type AS ENUM (
-  'occupancy',    -- Reporting how full a lot is
-  'enforcement',  -- Spotted parking enforcement
-  'closed',       -- Lot is closed
-  'event',        -- Event affecting parking
-  'hazard'        -- Pothole, flooding, etc.
+  'parked',        -- User just parked here
+  'left',          -- User just left this lot
+  'status_report', -- General status update
+  'full_report',   -- Detailed report with all info
+  'enforcement',   -- Spotted parking enforcement
+  'hazard'         -- Pothole, flooding, etc.
 );
 
--- Reporter trust levels for gamification
+-- Reporter trust levels for gamification (matching app's level system)
 CREATE TYPE reporter_level AS ENUM (
-  'newcomer',     -- 0-10 reports
-  'contributor',  -- 10-50 reports
-  'trusted',      -- 50-200 reports with good accuracy
-  'veteran',      -- 200+ reports with good accuracy
-  'expert'        -- Verified power user
+  'newbie',       -- 0-5 reports
+  'rookie',       -- 5-25 reports
+  'regular',      -- 25-75 reports
+  'veteran',      -- 75-200 reports
+  'legend',       -- 200-500 reports
+  'mvp',          -- 500-1000 reports
+  'hall_of_fame'  -- 1000+ reports
 );

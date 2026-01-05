@@ -329,10 +329,13 @@ BEGIN
   -- Update reporter level based on total reports
   UPDATE users
   SET reporter_level = CASE
-    WHEN (SELECT total_reports FROM user_stats WHERE user_id = NEW.user_id) >= 200 THEN 'veteran'
-    WHEN (SELECT total_reports FROM user_stats WHERE user_id = NEW.user_id) >= 50 THEN 'trusted'
-    WHEN (SELECT total_reports FROM user_stats WHERE user_id = NEW.user_id) >= 10 THEN 'contributor'
-    ELSE 'newcomer'
+    WHEN (SELECT total_reports FROM user_stats WHERE user_id = NEW.user_id) >= 1000 THEN 'hall_of_fame'
+    WHEN (SELECT total_reports FROM user_stats WHERE user_id = NEW.user_id) >= 500 THEN 'mvp'
+    WHEN (SELECT total_reports FROM user_stats WHERE user_id = NEW.user_id) >= 200 THEN 'legend'
+    WHEN (SELECT total_reports FROM user_stats WHERE user_id = NEW.user_id) >= 75 THEN 'veteran'
+    WHEN (SELECT total_reports FROM user_stats WHERE user_id = NEW.user_id) >= 25 THEN 'regular'
+    WHEN (SELECT total_reports FROM user_stats WHERE user_id = NEW.user_id) >= 5 THEN 'rookie'
+    ELSE 'newbie'
   END
   WHERE id = NEW.user_id;
 

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- RaiderPark App Icon - Authentic TTU Double-T with Parking Badge -->
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="scarletGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#CC0000"/>
+      <stop offset="100%" stop-color="#A30000"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background with rounded corners -->
+  <rect x="0" y="0" width="1024" height="1024" rx="230" fill="url(#scarletGradient)"/>
+
+  <!-- Authentic TTU Double-T (scaled from 80x80 to 1024x1024) -->
+  <g transform="translate(102, 102)">
+    <!-- LARGE T (Back) -->
+    <!-- Top horizontal bar -->
+    <rect x="51" y="51" width="717" height="154" fill="#FFFFFF"/>
+    <!-- Left serif -->
+    <rect x="51" y="0" width="102" height="77" fill="#FFFFFF"/>
+    <!-- Right serif -->
+    <rect x="666" y="0" width="102" height="77" fill="#FFFFFF"/>
+
+    <!-- Vertical bar of large T -->
+    <rect x="333" y="205" width="154" height="614" fill="#FFFFFF"/>
+    <!-- Bottom serifs -->
+    <rect x="256" y="768" width="307" height="51" fill="#FFFFFF"/>
+
+    <!-- SMALL T (Front/Overlapping) -->
+    <!-- Small T horizontal bar -->
+    <rect x="205" y="333" width="410" height="77" fill="#FFFFFF"/>
+    <!-- Small T left serif -->
+    <rect x="179" y="307" width="77" height="51" fill="#FFFFFF"/>
+    <!-- Small T right serif -->
+    <rect x="563" y="307" width="77" height="51" fill="#FFFFFF"/>
+
+    <!-- Shadow/depth lines -->
+    <rect x="205" y="410" width="128" height="13" fill="#CC0000" opacity="0.3"/>
+    <rect x="487" y="410" width="128" height="13" fill="#CC0000" opacity="0.3"/>
+  </g>
+
+  <!-- Parking "P" Badge - bottom right corner -->
+  <g transform="translate(665, 665)">
+    <circle cx="154" cy="154" r="154" fill="#FFFFFF"/>
+    <circle cx="154" cy="154" r="128" fill="#CC0000"/>
+    <path
+      d="M102 77 L102 230 L128 230 L128 179 L166 179 C205 179 230 160 230 128 C230 96 205 77 166 77 L102 77 Z M128 102 L154 102 C179 102 192 113 192 128 C192 143 179 154 154 154 L128 154 Z"
+      fill="#FFFFFF"
+    />
+  </g>
+</svg>

@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
-import { Platform, View } from 'react-native';
+import { Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { Home, Map, BarChart3, Settings } from 'lucide-react-native';
+import { SFIcon } from '@/components/ui/SFIcon';
 import { Colors } from '@/constants/theme';
 
 export default function TabLayout() {
@@ -44,32 +44,35 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <SFIcon name="home" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="map"
         options={{
           title: 'Map',
-          tabBarIcon: ({ color, size }) => <Map size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <SFIcon name="map" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="stats"
+        name="raider"
         options={{
-          title: 'Stats',
-          tabBarIcon: ({ color, size }) => (
-            <BarChart3 size={size} color={color} />
-          ),
+          title: 'Raider',
+          tabBarIcon: ({ color, size }) => <SFIcon name="star" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color, size }) => (
-            <Settings size={size} color={color} />
-          ),
+          tabBarIcon: ({ color, size }) => <SFIcon name="settings" size={size} color={color} />,
+        }}
+      />
+      {/* Hidden tab - kept for backward compatibility */}
+      <Tabs.Screen
+        name="stats"
+        options={{
+          href: null, // Hide from tab bar
         }}
       />
     </Tabs>

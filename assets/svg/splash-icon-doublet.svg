@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Splash icon - Double-T design for consistency -->
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Double-T as Parking Spaces -->
+  <g transform="translate(46, 62)">
+    <!-- Top horizontal bar of the T -->
+    <rect x="0" y="0" width="420" height="84" rx="14" fill="#FFFFFF"/>
+
+    <!-- Left T vertical -->
+    <rect x="56" y="84" width="84" height="308" rx="14" fill="#FFFFFF"/>
+
+    <!-- Right T vertical -->
+    <rect x="280" y="84" width="84" height="308" rx="14" fill="#FFFFFF"/>
+
+    <!-- Parking space lines on left T -->
+    <rect x="70" y="126" width="56" height="11" fill="#CC0000" opacity="0.6"/>
+    <rect x="70" y="182" width="56" height="11" fill="#CC0000" opacity="0.6"/>
+    <rect x="70" y="238" width="56" height="11" fill="#CC0000" opacity="0.6"/>
+    <rect x="70" y="294" width="56" height="11" fill="#CC0000" opacity="0.6"/>
+    <rect x="70" y="350" width="56" height="11" fill="#CC0000" opacity="0.6"/>
+
+    <!-- Parking space lines on right T -->
+    <rect x="294" y="126" width="56" height="11" fill="#CC0000" opacity="0.6"/>
+    <rect x="294" y="182" width="56" height="11" fill="#CC0000" opacity="0.6"/>
+    <rect x="294" y="238" width="56" height="11" fill="#CC0000" opacity="0.6"/>
+    <rect x="294" y="294" width="56" height="11" fill="#CC0000" opacity="0.6"/>
+    <rect x="294" y="350" width="56" height="11" fill="#CC0000" opacity="0.6"/>
+
+    <!-- Small car icons in parking spaces -->
+    <rect x="77" y="140" width="42" height="28" rx="7" fill="#34C759"/>
+    <rect x="77" y="252" width="42" height="28" rx="7" fill="#007AFF"/>
+    <rect x="301" y="196" width="42" height="28" rx="7" fill="#FF9500"/>
+    <rect x="301" y="308" width="42" height="28" rx="7" fill="#34C759"/>
+  </g>
+</svg>

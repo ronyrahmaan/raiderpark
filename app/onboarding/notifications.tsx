@@ -19,46 +19,47 @@ import Animated, {
   FadeInUp,
   FadeIn,
 } from 'react-native-reanimated';
-import {
-  Bell,
-  BellRing,
-  CalendarClock,
-  AlertTriangle,
-  Clock,
-  ChevronRight,
-  ChevronLeft,
-} from 'lucide-react-native';
+import { SFIcon } from '@/components/ui/SFIcon';
 import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { useAuthStore } from '@/stores/authStore';
+import {
+  Colors,
+  BorderRadius,
+  Spacing,
+  FontSize,
+  FontWeight,
+} from '@/constants/theme';
 
 // Notification benefits to show
 const NOTIFICATION_BENEFITS = [
   {
     id: 'events',
-    icon: CalendarClock,
+    iconName: 'calendar' as const,
     title: 'Event Closures',
     description: 'Know when lots close for games or events before you leave',
-    color: '#FF9500',
+    color: Colors.ios.orange,
   },
   {
     id: 'filling',
-    icon: AlertTriangle,
+    iconName: 'alert' as const,
     title: 'Lot Filling Alerts',
     description: 'Get notified when your preferred lots are filling up fast',
-    color: '#FF3B30',
+    color: Colors.ios.red,
   },
   {
     id: 'reminders',
-    icon: Clock,
+    iconName: 'clock' as const,
     title: 'Departure Reminders',
     description: 'Never get a ticket from time-limited parking spots',
-    color: '#007AFF',
+    color: Colors.ios.blue,
   },
 ];
 
 export default function NotificationsScreen() {
+  const { updateNotificationPreferences } = useAuthStore();
   const [isRequesting, setIsRequesting] = useState(false);
   const [permissionStatus, setPermissionStatus] = useState<'undetermined' | 'granted' | 'denied'>('undetermined');
 
@@ -79,13 +80,44 @@ export default function NotificationsScreen() {
       setPermissionStatus(finalStatus === 'granted' ? 'granted' : 'denied');
 
       if (finalStatus === 'granted') {
+        // Save notification preferences to backend
+        try {
+          await updateNotificationPreferences({
+            departure_reminders: true,
+            lot_filling: true,
+            spot_opening: true,
+            event_closures: true,
+            tower_icing: true,
+            time_limit_warnings: true,
+            weekly_summary: true,
+          });
+        } catch (err) {
+          console.error('Failed to save notification preferences:', err);
+          // Continue anyway - preferences can be updated later
+        }
+
         // Success - navigate after brief delay for feedback
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setTimeout(() => {
           router.push('/onboarding/location');
         }, 500);
       } else {
-        // Permission denied - still allow them to continue
+        // Permission denied - save disabled preferences
+        try {
+          await updateNotificationPreferences({
+            departure_reminders: false,
+            lot_filling: false,
+            spot_opening: false,
+            event_closures: false,
+            tower_icing: false,
+            time_limit_warnings: false,
+            weekly_summary: false,
+          });
+        } catch (err) {
+          console.error('Failed to save notification preferences:', err);
+        }
+
+        // Still allow them to continue
         Alert.alert(
           'Notifications Disabled',
           'You can enable notifications later in Settings.',
@@ -114,80 +146,76 @@ export default function NotificationsScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View className="px-6 pt-4 pb-2">
+      <View style={styles.header}>
         {/* Back Button */}
-        <Pressable
-          onPress={handleBack}
-          className="flex-row items-center -ml-2 mb-4"
-        >
-          <ChevronLeft size={24} color="#CC0000" />
-          <Text className="text-base text-scarlet-500">Back</Text>
+        <Pressable onPress={handleBack} style={styles.backButton}>
+          <SFIcon name="chevron-left" size={24} color={Colors.scarlet[500]} />
+          <Text style={styles.backButtonText}>Back</Text>
         </Pressable>
 
         {/* Progress Indicator */}
         <Animated.View
           entering={FadeInDown.duration(600)}
-          className="flex-row gap-2 mb-6"
+          style={styles.progressContainer}
         >
           {[1, 2, 3, 4].map((step, index) => (
             <View
               key={step}
-              className={`flex-1 h-1 rounded-full ${
-                index <= 2 ? 'bg-scarlet-500' : 'bg-ios-gray5'
-              }`}
+              style={[
+                styles.progressStep,
+                index <= 2 ? styles.progressStepActive : styles.progressStepInactive,
+              ]}
             />
           ))}
         </Animated.View>
       </View>
 
       {/* Content */}
-      <View className="flex-1 px-6">
+      <View style={styles.content}>
         {/* Icon and Title */}
         <Animated.View
           entering={FadeInUp.delay(100).duration(600)}
-          className="items-center mb-8"
+          style={styles.titleSection}
         >
           {/* Animated Bell Icon */}
-          <View className="relative mb-6">
-            <View className="bg-scarlet-100 w-24 h-24 rounded-3xl items-center justify-center" style={styles.iconShadow}>
-              <BellRing size={48} color="#CC0000" strokeWidth={1.5} />
+          <View style={styles.iconContainer}>
+            <View style={[styles.iconBackground, styles.iconShadow]}>
+              <SFIcon name="bell" size={48} color={Colors.scarlet[500]} />
             </View>
             {/* Notification Badge */}
-            <View className="absolute -top-1 -right-1 bg-ios-red w-6 h-6 rounded-full items-center justify-center border-2 border-white">
-              <Text className="text-white text-xs font-bold">3</Text>
+            <View style={styles.iconBadge}>
+              <Text style={styles.iconBadgeText}>3</Text>
             </View>
           </View>
 
-          <Text className="text-3xl font-bold text-black text-center mb-2">
-            Stay in the Loop
-          </Text>
-          <Text className="text-base text-ios-gray text-center px-4">
+          <Text style={styles.title}>Stay in the Loop</Text>
+          <Text style={styles.subtitle}>
             Get real-time updates about parking at TTU
           </Text>
         </Animated.View>
 
         {/* Benefits List */}
-        <View className="gap-3">
+        <View style={styles.benefitsList}>
           {NOTIFICATION_BENEFITS.map((benefit, index) => (
             <Animated.View
               key={benefit.id}
               entering={FadeInUp.delay(200 + index * 100).duration(500)}
             >
               <Card variant="filled" padding="md" radius="lg">
-                <View className="flex-row items-center">
+                <View style={styles.benefitRow}>
                   <View
-                    className="w-12 h-12 rounded-xl items-center justify-center mr-4"
-                    style={{ backgroundColor: `${benefit.color}15` }}
+                    style={[
+                      styles.benefitIconContainer,
+                      { backgroundColor: `${benefit.color}15` },
+                    ]}
                   >
-                    <benefit.icon size={24} color={benefit.color} strokeWidth={2} />
+                    <SFIcon name={benefit.iconName} size={24} color={benefit.color} />
                   </View>
-                  <View className="flex-1">
-                    <Text className="text-base font-semibold text-black">
-                      {benefit.title}
-                    </Text>
-                    <Text className="text-sm text-ios-gray mt-0.5">
+                  <View style={styles.benefitTextContainer}>
+                    <Text style={styles.benefitTitle}>{benefit.title}</Text>
+                    <Text style={styles.benefitDescription}>
                       {benefit.description}
                     </Text>
                   </View>
@@ -199,12 +227,9 @@ export default function NotificationsScreen() {
 
         {/* Permission Status Feedback */}
         {permissionStatus === 'granted' && (
-          <Animated.View
-            entering={FadeIn.duration(400)}
-            className="mt-4 p-4 bg-ios-green/10 rounded-xl flex-row items-center"
-          >
-            <Bell size={20} color="#34C759" className="mr-3" />
-            <Text className="text-sm font-medium text-ios-green flex-1">
+          <Animated.View entering={FadeIn.duration(400)} style={styles.successFeedback}>
+            <SFIcon name="bell" size={20} color={Colors.ios.green} style={styles.successIcon} />
+            <Text style={styles.successText}>
               Notifications enabled! You're all set.
             </Text>
           </Animated.View>
@@ -212,7 +237,7 @@ export default function NotificationsScreen() {
       </View>
 
       {/* Bottom CTA */}
-      <View style={styles.bottomCTA} className="px-6 pt-4 pb-6 bg-white border-t border-ios-gray5">
+      <View style={styles.bottomCTA}>
         <Animated.View entering={FadeInUp.delay(500).duration(600)}>
           <Button
             title="Enable Notifications"
@@ -221,18 +246,17 @@ export default function NotificationsScreen() {
             fullWidth
             isLoading={isRequesting}
             onPress={requestNotificationPermission}
-            className="rounded-2xl"
-            leftIcon={<Bell size={20} color="#FFFFFF" />}
+            leftIcon={<SFIcon name="bell" size={20} color={Colors.light.background} />}
           />
-          <Pressable onPress={handleSkip} className="mt-3 py-2">
-            <Text className="text-base text-ios-gray text-center">Maybe Later</Text>
+          <Pressable onPress={handleSkip} style={styles.skipButton}>
+            <Text style={styles.skipButtonText}>Maybe Later</Text>
           </Pressable>
         </Animated.View>
 
         {/* iOS Permission Note */}
         {Platform.OS === 'ios' && (
           <Animated.View entering={FadeInUp.delay(600).duration(600)}>
-            <Text className="text-xs text-ios-gray3 text-center mt-3">
+            <Text style={styles.permissionNote}>
               When prompted, tap "Allow" to receive notifications
             </Text>
           </Animated.View>
@@ -247,18 +271,170 @@ export default function NotificationsScreen() {
 // ============================================================
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.light.background,
+  },
+  header: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.sm,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: -Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  backButtonText: {
+    fontSize: FontSize.lg,
+    color: Colors.scarlet[500],
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
+  progressStep: {
+    flex: 1,
+    height: 4,
+    borderRadius: BorderRadius.full,
+  },
+  progressStepActive: {
+    backgroundColor: Colors.scarlet[500],
+  },
+  progressStepInactive: {
+    backgroundColor: Colors.gray[5],
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: Spacing.lg,
+  },
+  titleSection: {
+    alignItems: 'center',
+    marginBottom: Spacing.xl,
+  },
+  iconContainer: {
+    position: 'relative',
+    marginBottom: Spacing.lg,
+  },
+  iconBackground: {
+    backgroundColor: Colors.scarlet[100],
+    width: 96,
+    height: 96,
+    borderRadius: BorderRadius.xl + 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconShadow: {
+    shadowColor: Colors.scarlet[500],
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  iconBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: Colors.ios.red,
+    width: 24,
+    height: 24,
+    borderRadius: BorderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: Colors.light.background,
+  },
+  iconBadgeText: {
+    color: Colors.light.background,
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.bold,
+  },
+  title: {
+    fontSize: 30,
+    fontWeight: FontWeight.bold,
+    color: Colors.light.text,
+    textAlign: 'center',
+    marginBottom: Spacing.sm,
+  },
+  subtitle: {
+    fontSize: FontSize.lg,
+    color: Colors.gray[1],
+    textAlign: 'center',
+    paddingHorizontal: Spacing.md,
+  },
+  benefitsList: {
+    gap: Spacing.md,
+  },
+  benefitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  benefitIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.md,
+  },
+  benefitTextContainer: {
+    flex: 1,
+  },
+  benefitTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.semibold,
+    color: Colors.light.text,
+  },
+  benefitDescription: {
+    fontSize: FontSize.sm,
+    color: Colors.gray[1],
+    marginTop: 2,
+  },
+  successFeedback: {
+    marginTop: Spacing.md,
+    padding: Spacing.md,
+    backgroundColor: `${Colors.ios.green}15`,
+    borderRadius: BorderRadius.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  successIcon: {
+    marginRight: Spacing.md,
+  },
+  successText: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.medium,
+    color: Colors.ios.green,
+    flex: 1,
+  },
   bottomCTA: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.lg,
+    backgroundColor: Colors.light.background,
+    borderTopWidth: 1,
+    borderTopColor: Colors.gray[5],
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 8,
   },
-  iconShadow: {
-    shadowColor: '#CC0000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8,
+  skipButton: {
+    marginTop: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  skipButtonText: {
+    fontSize: FontSize.lg,
+    color: Colors.gray[1],
+    textAlign: 'center',
+  },
+  permissionNote: {
+    fontSize: FontSize.xs,
+    color: Colors.gray[3],
+    textAlign: 'center',
+    marginTop: Spacing.md,
   },
 });

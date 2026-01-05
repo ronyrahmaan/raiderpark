@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { Redirect } from 'expo-router';
 import { useAuthStore } from '@/stores/authStore';
+import { Colors } from '@/constants/theme';
 
 export default function Index() {
   const { session, isOnboarded, isLoading } = useAuthStore();
@@ -9,8 +9,8 @@ export default function Index() {
   // Show loading indicator while initializing
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator size="large" color="#CC0000" />
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={Colors.scarlet.DEFAULT} />
       </View>
     );
   }
@@ -28,3 +28,12 @@ export default function Index() {
   // Authenticated and onboarded -> Go to main app
   return <Redirect href="/(tabs)" />;
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.light.background,
+  },
+});

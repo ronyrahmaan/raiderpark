@@ -1,9 +1,10 @@
 // ============================================================
 // PERMIT SELECTION SCREEN
-// Premium iOS-first design for RaiderPark
+// Premium iOS-first design for RaiderPark - Pure StyleSheet
+// Fetches real permit data from Supabase backend
 // ============================================================
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,35 +12,86 @@ import {
   ScrollView,
   StyleSheet,
   Pressable,
+  ViewStyle,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import Animated, {
   FadeInDown,
   FadeInRight,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
 } from 'react-native-reanimated';
-import { ChevronRight, Car, Building, Home, Warehouse, CircleParking } from 'lucide-react-native';
+import { SFIcon } from '@/components/ui/SFIcon';
 import * as Haptics from 'expo-haptics';
 import { Button } from '@/components/ui/Button';
-import { PressableCard } from '@/components/ui/Card';
 import { PERMITS, PERMIT_CATEGORIES, type PermitInfo } from '@/constants/permits';
-import { PermitType } from '@/types/database';
 import { useAuthStore } from '@/stores/authStore';
+import { usePermitsByCategory, useUpdatePermitType } from '@/hooks/usePermits';
 import { formatPrice } from '@/lib/utils';
+import {
+  Colors,
+  Spacing,
+  BorderRadius,
+  Typography,
+  FontWeight,
+  Shadows,
+} from '@/constants/theme';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 // Icon mapping for permit categories
-const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  'Commuter': <Car size={20} color="#CC0000" strokeWidth={2} />,
-  'Residence Hall': <Home size={20} color="#CC0000" strokeWidth={2} />,
-  'Garage': <Warehouse size={20} color="#CC0000" strokeWidth={2} />,
-  'Other': <CircleParking size={20} color="#CC0000" strokeWidth={2} />,
+const CATEGORY_ICONS: Record<string, string> = {
+  'commuter': 'car',
+  'residence': 'star',
+  'garage': 'building-2',
+  'other': 'parking',
+};
+
+// Category display names
+const CATEGORY_NAMES: Record<string, string> = {
+  'commuter': 'Commuter',
+  'residence': 'Residence Hall',
+  'garage': 'Garage',
+  'other': 'Other',
 };
 
 export default function PermitScreen() {
-  const [selectedPermit, setSelectedPermit] = useState<PermitType | null>(null);
-  const { updatePermitType, user } = useAuthStore();
-  const [isLoading, setIsLoading] = useState(false);
+  const [selectedPermit, setSelectedPermit] = useState<string | null>(null);
+  const { user } = useAuthStore();
 
-  const handleSelectPermit = useCallback((permitId: PermitType) => {
+  // Fetch permits from backend
+  const { data: permitCategories, isLoading, isError, refetch } = usePermitsByCategory();
+  const updatePermitMutation = useUpdatePermitType();
+
+  // Convert backend data to display format, with fallback to constants
+  const categories = useMemo(() => {
+    if (permitCategories && permitCategories.length > 0) {
+      return permitCategories.map(({ category, permits }) => ({
+        title: CATEGORY_NAMES[category] || category,
+        icon: CATEGORY_ICONS[category] || 'parking',
+        permits: permits.map((p): PermitInfo => ({
+          id: p.id as any,
+          name: p.name,
+          shortName: p.short_name,
+          price: p.price,
+          description: p.description || '',
+          validLots: p.valid_lots,
+          crossLotTime: p.cross_lot_time || undefined,
+          freeTime: p.free_time || undefined,
+        })),
+      }));
+    }
+    // Fallback to hardcoded data
+    return PERMIT_CATEGORIES.map(cat => ({
+      title: cat.title,
+      icon: CATEGORY_ICONS[cat.title.toLowerCase()] || 'parking',
+      permits: cat.permits.map(id => PERMITS[id]),
+    }));
+  }, [permitCategories]);
+
+  const handleSelectPermit = useCallback((permitId: string) => {
     Haptics.selectionAsync();
     setSelectedPermit(permitId);
   }, []);
@@ -47,18 +99,15 @@ export default function PermitScreen() {
   const handleContinue = async () => {
     if (!selectedPermit) return;
 
-    setIsLoading(true);
     try {
       // If user is authenticated, save the permit
       if (user) {
-        await updatePermitType(selectedPermit);
+        await updatePermitMutation.mutateAsync(selectedPermit);
       }
       // Navigate to schedule screen
       router.push('/onboarding/schedule');
     } catch (error) {
       console.error('Failed to update permit:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -66,68 +115,102 @@ export default function PermitScreen() {
     router.push('/onboarding/schedule');
   };
 
+  // Loading State
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.scarlet[500]} />
+          <Text style={styles.loadingText}>Loading permits...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Error State with Retry
+  if (isError && !permitCategories) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <SFIcon name="exclamationmark-triangle" size={48} color={Colors.gray[1]} />
+          <Text style={styles.errorTitle}>Unable to load permits</Text>
+          <Text style={styles.errorText}>
+            Please check your connection and try again
+          </Text>
+          <Button
+            title="Retry"
+            variant="primary"
+            onPress={() => refetch()}
+            style={styles.retryButton}
+          />
+          <Pressable onPress={handleSkip} style={styles.skipButton}>
+            <Text style={styles.skipButtonText}>Continue without permit</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView style={styles.container}>
       {/* Header */}
       <Animated.View
         entering={FadeInDown.duration(600)}
-        className="px-6 pt-4 pb-2"
+        style={styles.header}
       >
         {/* Progress Indicator */}
-        <View className="flex-row gap-2 mb-6">
+        <View style={styles.progressContainer}>
           {[1, 2, 3, 4].map((step, index) => (
             <View
               key={step}
-              className={`flex-1 h-1 rounded-full ${
-                index === 0 ? 'bg-scarlet-500' : 'bg-ios-gray5'
-              }`}
+              style={[
+                styles.progressStep,
+                index === 0 ? styles.progressStepActive : styles.progressStepInactive,
+              ]}
             />
           ))}
         </View>
 
-        <Text className="text-3xl font-bold text-black mb-2">
+        <Text style={styles.title}>
           What type of parking permit do you have?
         </Text>
-        <Text className="text-base text-ios-gray">
+        <Text style={styles.subtitle}>
           This helps us show you available spots
         </Text>
       </Animated.View>
 
       {/* Permit List */}
       <ScrollView
-        className="flex-1"
-        contentContainerClassName="px-6 py-4"
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {PERMIT_CATEGORIES.map((category, categoryIndex) => (
+        {categories.map((category, categoryIndex) => (
           <Animated.View
             key={category.title}
             entering={FadeInRight.delay(100 + categoryIndex * 100).duration(500)}
-            className="mb-6"
+            style={styles.categoryContainer}
           >
             {/* Category Header */}
-            <View className="flex-row items-center mb-3">
-              <View className="mr-2">
-                {CATEGORY_ICONS[category.title] || <CircleParking size={20} color="#CC0000" />}
+            <View style={styles.categoryHeader}>
+              <View style={styles.categoryIconContainer}>
+                <SFIcon name={category.icon as any} size={20} color={Colors.scarlet[500]} />
               </View>
-              <Text className="text-sm font-semibold text-ios-gray uppercase tracking-wider">
+              <Text style={styles.categoryTitle}>
                 {category.title}
               </Text>
             </View>
 
             {/* Permit Cards */}
-            <View className="gap-3">
-              {category.permits.map((permitId) => {
-                const permit = PERMITS[permitId];
-                return (
-                  <PermitCard
-                    key={permitId}
-                    permit={permit}
-                    isSelected={selectedPermit === permitId}
-                    onPress={() => handleSelectPermit(permitId)}
-                  />
-                );
-              })}
+            <View style={styles.permitCardsContainer}>
+              {category.permits.map((permit) => (
+                <PermitCard
+                  key={permit.id}
+                  permit={permit}
+                  isSelected={selectedPermit === permit.id}
+                  onPress={() => handleSelectPermit(permit.id)}
+                />
+              ))}
             </View>
           </Animated.View>
         ))}
@@ -135,7 +218,7 @@ export default function PermitScreen() {
         {/* No Permit Option */}
         <Animated.View
           entering={FadeInRight.delay(500).duration(500)}
-          className="mb-6"
+          style={styles.categoryContainer}
         >
           <PermitCard
             permit={PERMITS.none}
@@ -145,24 +228,24 @@ export default function PermitScreen() {
         </Animated.View>
 
         {/* Bottom Spacing */}
-        <View className="h-24" />
+        <View style={styles.bottomSpacer} />
       </ScrollView>
 
       {/* Bottom CTA */}
-      <View style={styles.bottomCTA} className="px-6 pt-4 pb-6 bg-white border-t border-ios-gray5">
+      <View style={styles.bottomCTA}>
         <Button
           title="Continue"
           variant="primary"
           size="xl"
           fullWidth
           disabled={!selectedPermit}
-          isLoading={isLoading}
+          isLoading={updatePermitMutation.isPending}
           onPress={handleContinue}
-          className="rounded-2xl"
-          rightIcon={<ChevronRight size={20} color="#FFFFFF" />}
+          style={styles.continueButton}
+          rightIcon={<SFIcon name="chevron-right" size={20} color="#FFFFFF" />}
         />
-        <Pressable onPress={handleSkip} className="mt-3 py-2">
-          <Text className="text-base text-ios-gray text-center">Skip for now</Text>
+        <Pressable onPress={handleSkip} style={styles.skipButton}>
+          <Text style={styles.skipButtonText}>Skip for now</Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -180,45 +263,75 @@ interface PermitCardProps {
 }
 
 function PermitCard({ permit, isSelected, onPress }: PermitCardProps) {
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePressIn = useCallback(() => {
+    scale.value = withSpring(0.98, {
+      damping: 15,
+      stiffness: 400,
+    });
+  }, [scale]);
+
+  const handlePressOut = useCallback(() => {
+    scale.value = withSpring(1, {
+      damping: 15,
+      stiffness: 400,
+    });
+  }, [scale]);
+
+  const handlePress = useCallback(() => {
+    Haptics.selectionAsync();
+    onPress();
+  }, [onPress]);
+
+  const cardStyle: ViewStyle[] = [
+    cardStyles.card,
+    isSelected ? cardStyles.cardSelected : cardStyles.cardUnselected,
+    isSelected ? cardStyles.cardSelectedShadow : cardStyles.cardShadow,
+  ];
+
   return (
-    <PressableCard
-      variant="elevated"
-      radius="lg"
-      padding="md"
-      selected={isSelected}
-      onPress={onPress}
-      className="flex-row items-center justify-between"
+    <AnimatedPressable
+      style={[animatedStyle, ...cardStyle]}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      onPress={handlePress}
     >
-      <View className="flex-1 mr-4">
-        <Text className="text-base font-semibold text-black">
+      <View style={cardStyles.contentContainer}>
+        <Text style={cardStyles.permitName}>
           {permit.name}
         </Text>
-        <Text className="text-sm text-ios-gray mt-0.5" numberOfLines={1}>
+        <Text style={cardStyles.permitDescription} numberOfLines={1}>
           {permit.description}
         </Text>
       </View>
 
-      <View className="flex-row items-center">
+      <View style={cardStyles.rightContainer}>
         {permit.price > 0 && (
-          <Text className="text-sm font-medium text-ios-gray mr-3">
+          <Text style={cardStyles.priceText}>
             {formatPrice(permit.price)}/yr
           </Text>
         )}
 
         {/* Selection Indicator */}
         <View
-          className={`w-6 h-6 rounded-full border-2 items-center justify-center ${
+          style={[
+            cardStyles.selectionIndicator,
             isSelected
-              ? 'bg-scarlet-500 border-scarlet-500'
-              : 'bg-white border-ios-gray4'
-          }`}
+              ? cardStyles.selectionIndicatorSelected
+              : cardStyles.selectionIndicatorUnselected,
+          ]}
         >
           {isSelected && (
-            <View className="w-2 h-2 bg-white rounded-full" />
+            <View style={cardStyles.selectionIndicatorDot} />
           )}
         </View>
       </View>
-    </PressableCard>
+    </AnimatedPressable>
   );
 }
 
@@ -227,11 +340,206 @@ function PermitCard({ permit, isSelected, onPress }: PermitCardProps) {
 // ============================================================
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.light.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: Colors.gray[1],
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.xl,
+    gap: Spacing.md,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: FontWeight.semibold,
+    color: Colors.light.text,
+    marginTop: Spacing.md,
+  },
+  errorText: {
+    fontSize: 16,
+    color: Colors.gray[1],
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: Spacing.lg,
+    minWidth: 120,
+  },
+  header: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.sm,
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
+  progressStep: {
+    flex: 1,
+    height: 4,
+    borderRadius: BorderRadius.full,
+  },
+  progressStepActive: {
+    backgroundColor: Colors.scarlet[500],
+  },
+  progressStepInactive: {
+    backgroundColor: Colors.gray[5],
+  },
+  title: {
+    ...Typography.largeTitle,
+    color: Colors.light.text,
+    marginBottom: Spacing.sm,
+  },
+  subtitle: {
+    fontSize: 16,
+    fontWeight: FontWeight.regular,
+    color: Colors.gray[1],
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+  },
+  categoryContainer: {
+    marginBottom: Spacing.lg,
+  },
+  categoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+  categoryIconContainer: {
+    marginRight: Spacing.sm,
+  },
+  categoryTitle: {
+    fontSize: 14,
+    fontWeight: FontWeight.semibold,
+    color: Colors.gray[1],
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  permitCardsContainer: {
+    gap: Spacing.md,
+  },
+  bottomSpacer: {
+    height: 96,
+  },
   bottomCTA: {
-    shadowColor: '#000',
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.lg,
+    backgroundColor: Colors.light.background,
+    borderTopWidth: 1,
+    borderTopColor: Colors.gray[5],
+    ...Shadows.md,
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 8,
+  },
+  continueButton: {
+    borderRadius: BorderRadius.lg,
+  },
+  skipButton: {
+    marginTop: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  skipButtonText: {
+    fontSize: 16,
+    fontWeight: FontWeight.regular,
+    color: Colors.gray[1],
+    textAlign: 'center',
+  },
+});
+
+const cardStyles = StyleSheet.create({
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.light.background,
+    overflow: 'hidden',
+  },
+  cardUnselected: {
+    borderWidth: 0,
+  },
+  cardSelected: {
+    borderWidth: 2,
+    borderColor: Colors.scarlet[500],
+  },
+  cardShadow: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  cardSelectedShadow: {
+    shadowColor: Colors.scarlet[500],
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  contentContainer: {
+    flex: 1,
+    marginRight: Spacing.md,
+  },
+  permitName: {
+    fontSize: 16,
+    fontWeight: FontWeight.semibold,
+    color: Colors.light.text,
+  },
+  permitDescription: {
+    fontSize: 14,
+    fontWeight: FontWeight.regular,
+    color: Colors.gray[1],
+    marginTop: 2,
+  },
+  rightContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  priceText: {
+    fontSize: 14,
+    fontWeight: FontWeight.medium,
+    color: Colors.gray[1],
+    marginRight: Spacing.md,
+  },
+  selectionIndicator: {
+    width: 24,
+    height: 24,
+    borderRadius: BorderRadius.full,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectionIndicatorUnselected: {
+    backgroundColor: Colors.light.background,
+    borderColor: Colors.gray[4],
+  },
+  selectionIndicatorSelected: {
+    backgroundColor: Colors.scarlet[500],
+    borderColor: Colors.scarlet[500],
+  },
+  selectionIndicatorDot: {
+    width: 8,
+    height: 8,
+    backgroundColor: Colors.light.background,
+    borderRadius: BorderRadius.full,
   },
 });

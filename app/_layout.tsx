@@ -1,4 +1,3 @@
-import '../global.css';
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -6,6 +5,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as SplashScreen from 'expo-splash-screen';
 import { useAuthStore } from '@/stores/authStore';
+import { initializeReportQueue, cleanupReportQueue } from '@/services/reportQueue';
 
 // Keep splash screen visible while loading
 SplashScreen.preventAutoHideAsync();
@@ -28,14 +28,21 @@ export default function RootLayout() {
     const init = async () => {
       try {
         await initialize();
+        // Initialize report queue for offline support
+        await initializeReportQueue();
       } catch (error) {
-        console.error('Failed to initialize auth:', error);
+        console.error('Failed to initialize:', error);
       } finally {
         await SplashScreen.hideAsync();
       }
     };
 
     init();
+
+    // Cleanup on unmount
+    return () => {
+      cleanupReportQueue();
+    };
   }, [initialize]);
 
   return (

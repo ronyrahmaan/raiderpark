@@ -86,10 +86,10 @@ export const useParkingStore = create<ParkingState>((set, get) => ({
     try {
       const { data, error } = await supabase.rpc('get_lots_with_status', {
         p_permit_type: permitType,
-      });
+      } as any);
 
       if (error) throw error;
-      set({ lotsForPermit: data ?? [], lastUpdated: new Date() });
+      set({ lotsForPermit: (data ?? []) as LotWithStatusForPermit[], lastUpdated: new Date() });
     } catch (error) {
       set({ error: (error as Error).message });
     } finally {
@@ -124,8 +124,8 @@ export const useParkingStore = create<ParkingState>((set, get) => ({
       const { data: allEvents, error: eventsError } = await supabase
         .from('events')
         .select('*')
-        .gte('end_time', new Date().toISOString())
-        .order('start_time', { ascending: true });
+        .gte('ends_at', new Date().toISOString())
+        .order('starts_at', { ascending: true });
 
       if (eventsError) throw eventsError;
 
@@ -150,12 +150,19 @@ export const useParkingStore = create<ParkingState>((set, get) => ({
   // Fetch Predictions for a Lot
   fetchPredictions: async (lotId: string, date: string) => {
     try {
+      // Parse date and create range for the day
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+
       const { data, error } = await supabase
         .from('lot_predictions')
         .select('*')
         .eq('lot_id', lotId)
-        .eq('prediction_date', date)
-        .order('prediction_time', { ascending: true });
+        .gte('predicted_for', startOfDay.toISOString())
+        .lte('predicted_for', endOfDay.toISOString())
+        .order('predicted_for', { ascending: true });
 
       if (error) throw error;
 
@@ -179,11 +186,11 @@ export const useParkingStore = create<ParkingState>((set, get) => ({
         user_id: user?.id,
         lot_id: lotId,
         report_type: 'status_report',
-        status,
-        occupancy_estimate: occupancyEstimate,
+        occupancy_status: status,
+        occupancy_percent: occupancyEstimate,
         note,
         is_geofence_triggered: false,
-      });
+      } as any);
 
       if (error) throw error;
 

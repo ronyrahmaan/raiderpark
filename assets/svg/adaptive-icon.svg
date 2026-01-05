@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Android Adaptive Icon - Authentic TTU Double-T foreground -->
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Authentic TTU Double-T - centered for adaptive icon safe zone -->
+  <g transform="translate(180, 140)">
+    <!-- LARGE T (Back) -->
+    <!-- Top horizontal bar -->
+    <rect x="40" y="40" width="584" height="120" fill="#FFFFFF"/>
+    <!-- Left serif -->
+    <rect x="40" y="0" width="80" height="60" fill="#FFFFFF"/>
+    <!-- Right serif -->
+    <rect x="544" y="0" width="80" height="60" fill="#FFFFFF"/>
+
+    <!-- Vertical bar of large T -->
+    <rect x="272" y="160" width="120" height="500" fill="#FFFFFF"/>
+    <!-- Bottom serifs -->
+    <rect x="212" y="620" width="240" height="40" fill="#FFFFFF"/>
+
+    <!-- SMALL T (Front/Overlapping) -->
+    <rect x="168" y="268" width="328" height="60" fill="#FFFFFF"/>
+    <!-- Small T serifs -->
+    <rect x="148" y="248" width="60" height="40" fill="#FFFFFF"/>
+    <rect x="456" y="248" width="60" height="40" fill="#FFFFFF"/>
+
+    <!-- Shadow/depth -->
+    <rect x="168" y="328" width="104" height="10" fill="#CC0000" opacity="0.3"/>
+    <rect x="392" y="328" width="104" height="10" fill="#CC0000" opacity="0.3"/>
+  </g>
+
+  <!-- Parking "P" Badge -->
+  <g transform="translate(590, 590)">
+    <circle cx="120" cy="120" r="120" fill="#FFFFFF"/>
+    <circle cx="120" cy="120" r="100" fill="#CC0000"/>
+    <path
+      d="M80 60 L80 180 L100 180 L100 140 L130 140 C160 140 180 125 180 100 C180 75 160 60 130 60 L80 60 Z M100 80 L120 80 C140 80 152 88 152 100 C152 112 140 120 120 120 L100 120 Z"
+      fill="#FFFFFF"
+    />
+  </g>
+</svg>

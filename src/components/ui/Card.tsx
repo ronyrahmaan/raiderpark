@@ -7,9 +7,14 @@ import React, { useCallback } from 'react';
 import {
   Pressable,
   View,
+  Text,
   ViewProps,
+  TextProps,
   PressableProps,
   StyleSheet,
+  ViewStyle,
+  TextStyle,
+  StyleProp,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import Animated, {
@@ -17,70 +22,113 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from '@/lib/utils';
+import {
+  Colors,
+  Shadows,
+  BorderRadius,
+  Spacing,
+  FontSize,
+  FontWeight,
+} from '@/constants/theme';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-// Card variants using CVA
-const cardVariants = cva('overflow-hidden', {
-  variants: {
-    variant: {
-      default: 'bg-white',
-      elevated: 'bg-white',
-      outlined: 'bg-white border border-ios-gray4',
-      filled: 'bg-ios-gray6',
-      scarlet: 'bg-scarlet-50',
-    },
-    radius: {
-      sm: 'rounded-lg',
-      md: 'rounded-xl',
-      lg: 'rounded-2xl',
-      xl: 'rounded-3xl',
-    },
-    padding: {
-      none: '',
-      sm: 'p-3',
-      md: 'p-4',
-      lg: 'p-5',
-      xl: 'p-6',
-    },
-  },
-  defaultVariants: {
-    variant: 'elevated',
-    radius: 'lg',
-    padding: 'md',
-  },
-});
+// ============================================================
+// TYPES
+// ============================================================
 
-export interface CardProps
-  extends Omit<ViewProps, 'style'>,
-    VariantProps<typeof cardVariants> {
+type CardVariant = 'default' | 'elevated' | 'outlined' | 'filled' | 'scarlet';
+type CardRadius = 'sm' | 'md' | 'lg' | 'xl';
+type CardPadding = 'none' | 'sm' | 'md' | 'lg' | 'xl';
+
+export interface CardProps extends Omit<ViewProps, 'style'> {
   children?: React.ReactNode;
-  className?: string;
+  variant?: CardVariant;
+  radius?: CardRadius;
+  padding?: CardPadding;
+  style?: StyleProp<ViewStyle>;
 }
+
+// ============================================================
+// STYLE HELPERS
+// ============================================================
+
+const getVariantStyle = (variant: CardVariant): ViewStyle => {
+  switch (variant) {
+    case 'default':
+      return { backgroundColor: Colors.light.background };
+    case 'elevated':
+      return { backgroundColor: Colors.light.background };
+    case 'outlined':
+      return {
+        backgroundColor: Colors.light.background,
+        borderWidth: 1,
+        borderColor: Colors.gray[4],
+      };
+    case 'filled':
+      return { backgroundColor: Colors.gray[6] };
+    case 'scarlet':
+      return { backgroundColor: Colors.scarlet[50] };
+    default:
+      return { backgroundColor: Colors.light.background };
+  }
+};
+
+const getRadiusStyle = (radius: CardRadius): ViewStyle => {
+  switch (radius) {
+    case 'sm':
+      return { borderRadius: BorderRadius.sm };
+    case 'md':
+      return { borderRadius: BorderRadius.md };
+    case 'lg':
+      return { borderRadius: BorderRadius.lg };
+    case 'xl':
+      return { borderRadius: BorderRadius.xl };
+    default:
+      return { borderRadius: BorderRadius.lg };
+  }
+};
+
+const getPaddingStyle = (padding: CardPadding): ViewStyle => {
+  switch (padding) {
+    case 'none':
+      return {};
+    case 'sm':
+      return { padding: Spacing.md };
+    case 'md':
+      return { padding: Spacing.md };
+    case 'lg':
+      return { padding: Spacing.lg };
+    case 'xl':
+      return { padding: Spacing.lg };
+    default:
+      return { padding: Spacing.md };
+  }
+};
+
+// ============================================================
+// CARD COMPONENT
+// ============================================================
 
 export function Card({
   children,
   variant = 'elevated',
   radius = 'lg',
   padding = 'md',
-  className,
+  style,
   ...props
 }: CardProps) {
-  const getShadowStyle = () => {
-    if (variant === 'elevated') {
-      return styles.elevatedShadow;
-    }
-    return undefined;
-  };
+  const cardStyle: StyleProp<ViewStyle> = [
+    styles.cardBase,
+    getVariantStyle(variant),
+    getRadiusStyle(radius),
+    getPaddingStyle(padding),
+    variant === 'elevated' ? Shadows.md : undefined,
+    style,
+  ];
 
   return (
-    <View
-      style={getShadowStyle()}
-      className={cn(cardVariants({ variant, radius, padding }), className)}
-      {...props}
-    >
+    <View style={cardStyle} {...props}>
       {children}
     </View>
   );
@@ -90,14 +138,15 @@ export function Card({
 // PRESSABLE CARD COMPONENT
 // ============================================================
 
-export interface PressableCardProps
-  extends Omit<PressableProps, 'style'>,
-    VariantProps<typeof cardVariants> {
+export interface PressableCardProps extends Omit<PressableProps, 'style'> {
   children?: React.ReactNode;
-  className?: string;
+  variant?: CardVariant;
+  radius?: CardRadius;
+  padding?: CardPadding;
+  style?: ViewStyle;
   hapticFeedback?: 'light' | 'medium' | 'heavy' | 'selection' | 'none';
   selected?: boolean;
-  selectedClassName?: string;
+  selectedStyle?: ViewStyle;
 }
 
 export function PressableCard({
@@ -105,10 +154,10 @@ export function PressableCard({
   variant = 'elevated',
   radius = 'lg',
   padding = 'md',
-  className,
+  style,
   hapticFeedback = 'selection',
   selected = false,
-  selectedClassName,
+  selectedStyle,
   onPressIn,
   onPressOut,
   onPress,
@@ -162,25 +211,32 @@ export function PressableCard({
     [hapticFeedback, onPress]
   );
 
-  const getShadowStyle = () => {
+  const getShadowStyle = (): ViewStyle | undefined => {
     if (variant === 'elevated') {
-      return selected ? styles.selectedShadow : styles.elevatedShadow;
+      return selected ? styles.selectedShadow : Shadows.md;
     }
     return undefined;
   };
 
-  const selectedClasses = selected
-    ? selectedClassName || 'border-2 border-scarlet-500'
-    : '';
+  const defaultSelectedStyle: ViewStyle = {
+    borderWidth: 2,
+    borderColor: Colors.scarlet[500],
+  };
+
+  const cardStyle: ViewStyle[] = [
+    styles.cardBase,
+    getVariantStyle(variant),
+    getRadiusStyle(radius),
+    getPaddingStyle(padding),
+    getShadowStyle(),
+    selected ? (selectedStyle || defaultSelectedStyle) : undefined,
+    disabled ? styles.disabled : undefined,
+    style,
+  ].filter(Boolean) as ViewStyle[];
 
   return (
     <AnimatedPressable
-      style={[animatedStyle, getShadowStyle(), disabled && styles.disabled]}
-      className={cn(
-        cardVariants({ variant, radius, padding }),
-        selectedClasses,
-        className
-      )}
+      style={[animatedStyle, ...cardStyle]}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onPress={handlePress}
@@ -196,14 +252,14 @@ export function PressableCard({
 // CARD HEADER COMPONENT
 // ============================================================
 
-export interface CardHeaderProps extends ViewProps {
+export interface CardHeaderProps extends Omit<ViewProps, 'style'> {
   children?: React.ReactNode;
-  className?: string;
+  style?: ViewStyle;
 }
 
-export function CardHeader({ children, className, ...props }: CardHeaderProps) {
+export function CardHeader({ children, style, ...props }: CardHeaderProps) {
   return (
-    <View className={cn('mb-3', className)} {...props}>
+    <View style={[styles.cardHeader, style]} {...props}>
       {children}
     </View>
   );
@@ -213,19 +269,14 @@ export function CardHeader({ children, className, ...props }: CardHeaderProps) {
 // CARD TITLE COMPONENT
 // ============================================================
 
-import { Text, TextProps } from 'react-native';
-
-export interface CardTitleProps extends TextProps {
+export interface CardTitleProps extends Omit<TextProps, 'style'> {
   children?: React.ReactNode;
-  className?: string;
+  style?: TextStyle;
 }
 
-export function CardTitle({ children, className, ...props }: CardTitleProps) {
+export function CardTitle({ children, style, ...props }: CardTitleProps) {
   return (
-    <Text
-      className={cn('text-lg font-semibold text-black', className)}
-      {...props}
-    >
+    <Text style={[styles.cardTitle, style]} {...props}>
       {children}
     </Text>
   );
@@ -235,18 +286,18 @@ export function CardTitle({ children, className, ...props }: CardTitleProps) {
 // CARD DESCRIPTION COMPONENT
 // ============================================================
 
-export interface CardDescriptionProps extends TextProps {
+export interface CardDescriptionProps extends Omit<TextProps, 'style'> {
   children?: React.ReactNode;
-  className?: string;
+  style?: TextStyle;
 }
 
 export function CardDescription({
   children,
-  className,
+  style,
   ...props
 }: CardDescriptionProps) {
   return (
-    <Text className={cn('text-sm text-ios-gray mt-1', className)} {...props}>
+    <Text style={[styles.cardDescription, style]} {...props}>
       {children}
     </Text>
   );
@@ -256,14 +307,14 @@ export function CardDescription({
 // CARD CONTENT COMPONENT
 // ============================================================
 
-export interface CardContentProps extends ViewProps {
+export interface CardContentProps extends Omit<ViewProps, 'style'> {
   children?: React.ReactNode;
-  className?: string;
+  style?: ViewStyle;
 }
 
-export function CardContent({ children, className, ...props }: CardContentProps) {
+export function CardContent({ children, style, ...props }: CardContentProps) {
   return (
-    <View className={cn('', className)} {...props}>
+    <View style={style} {...props}>
       {children}
     </View>
   );
@@ -273,14 +324,14 @@ export function CardContent({ children, className, ...props }: CardContentProps)
 // CARD FOOTER COMPONENT
 // ============================================================
 
-export interface CardFooterProps extends ViewProps {
+export interface CardFooterProps extends Omit<ViewProps, 'style'> {
   children?: React.ReactNode;
-  className?: string;
+  style?: ViewStyle;
 }
 
-export function CardFooter({ children, className, ...props }: CardFooterProps) {
+export function CardFooter({ children, style, ...props }: CardFooterProps) {
   return (
-    <View className={cn('mt-3 flex-row items-center', className)} {...props}>
+    <View style={[styles.cardFooter, style]} {...props}>
       {children}
     </View>
   );
@@ -291,15 +342,29 @@ export function CardFooter({ children, className, ...props }: CardFooterProps) {
 // ============================================================
 
 const styles = StyleSheet.create({
-  elevatedShadow: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
+  cardBase: {
+    overflow: 'hidden',
+  },
+  cardHeader: {
+    marginBottom: Spacing.md,
+  },
+  cardTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.semibold,
+    color: Colors.light.text,
+  },
+  cardDescription: {
+    fontSize: FontSize.sm,
+    color: Colors.gray[1],
+    marginTop: Spacing.xs,
+  },
+  cardFooter: {
+    marginTop: Spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   selectedShadow: {
-    shadowColor: '#CC0000',
+    shadowColor: Colors.scarlet.DEFAULT,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 12,

@@ -1,11 +1,14 @@
 /**
  * Predictions Service
- * ML-powered parking predictions
+ * ML-powered parking predictions from database
  */
 
 import { supabase } from '@/lib/supabase';
-import { LotPrediction, PermitType } from '@/types/database';
-import { format, addMinutes, setHours, setMinutes, parseISO } from 'date-fns';
+import { PermitType, LotPrediction, LotWithStatusForPermit } from '@/types/database';
+import { addMinutes, startOfDay, endOfDay, addHours } from 'date-fns';
+
+// Re-export the type for convenience
+export type { LotPrediction };
 
 // ============================================================
 // PREDICTION QUERIES
@@ -18,14 +21,16 @@ export async function getLotPredictions(
   lotId: string,
   date: Date
 ): Promise<LotPrediction[]> {
-  const dateStr = format(date, 'yyyy-MM-dd');
+  const dayStart = startOfDay(date).toISOString();
+  const dayEnd = endOfDay(date).toISOString();
 
   const { data, error } = await supabase
     .from('lot_predictions')
     .select('*')
     .eq('lot_id', lotId)
-    .eq('prediction_date', dateStr)
-    .order('prediction_time', { ascending: true });
+    .gte('predicted_for', dayStart)
+    .lte('predicted_for', dayEnd)
+    .order('predicted_for', { ascending: true });
 
   if (error) throw new Error(`Failed to fetch predictions: ${error.message}`);
   return data ?? [];
@@ -33,27 +38,47 @@ export async function getLotPredictions(
 
 /**
  * Get prediction for a specific lot at a specific time
+ * Finds the nearest prediction within 30 minutes of the target time
  */
 export async function getPredictionAt(
   lotId: string,
   dateTime: Date
 ): Promise<LotPrediction | null> {
-  const dateStr = format(dateTime, 'yyyy-MM-dd');
-  const timeStr = format(dateTime, 'HH:mm:00');
+  // Get predictions around the target time (±1 hour window)
+  const startTime = addHours(dateTime, -1).toISOString();
+  const endTime = addHours(dateTime, 1).toISOString();
 
-  const { data, error } = await supabase
+  const { data: rawData, error } = await supabase
     .from('lot_predictions')
     .select('*')
     .eq('lot_id', lotId)
-    .eq('prediction_date', dateStr)
-    .eq('prediction_time', timeStr)
-    .single();
+    .gte('predicted_for', startTime)
+    .lte('predicted_for', endTime)
+    .order('predicted_for', { ascending: true });
 
   if (error) {
-    if (error.code === 'PGRST116') return null;
-    throw new Error(`Failed to fetch prediction: ${error.message}`);
+    console.error('Error fetching prediction:', error);
+    return null;
   }
-  return data;
+
+  const data = (rawData || []) as LotPrediction[];
+
+  if (data.length === 0) return null;
+
+  // Find the closest prediction to target time
+  const targetTime = dateTime.getTime();
+  let closest = data[0];
+  let minDiff = Math.abs(new Date(closest.predicted_for).getTime() - targetTime);
+
+  for (const pred of data) {
+    const diff = Math.abs(new Date(pred.predicted_for).getTime() - targetTime);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closest = pred;
+    }
+  }
+
+  return closest;
 }
 
 /**
@@ -63,20 +88,42 @@ export async function getPredictionsForLots(
   lotIds: string[],
   dateTime: Date
 ): Promise<Map<string, LotPrediction>> {
-  const dateStr = format(dateTime, 'yyyy-MM-dd');
-  const timeStr = format(dateTime, 'HH:mm:00');
+  const startTime = addHours(dateTime, -1).toISOString();
+  const endTime = addHours(dateTime, 1).toISOString();
 
-  const { data, error } = await supabase
+  const { data: rawData, error } = await supabase
     .from('lot_predictions')
     .select('*')
     .in('lot_id', lotIds)
-    .eq('prediction_date', dateStr)
-    .eq('prediction_time', timeStr);
+    .gte('predicted_for', startTime)
+    .lte('predicted_for', endTime);
 
   if (error) throw new Error(`Failed to fetch predictions: ${error.message}`);
 
+  const data = (rawData || []) as LotPrediction[];
+
+  // For each lot, find the closest prediction to target time
   const predictionMap = new Map<string, LotPrediction>();
-  data?.forEach(pred => predictionMap.set(pred.lot_id, pred));
+  const targetTime = dateTime.getTime();
+
+  lotIds.forEach(lotId => {
+    const lotPredictions = data.filter(p => p.lot_id === lotId);
+    if (lotPredictions.length === 0) return;
+
+    let closest = lotPredictions[0];
+    let minDiff = Math.abs(new Date(closest.predicted_for).getTime() - targetTime);
+
+    for (const pred of lotPredictions) {
+      const diff = Math.abs(new Date(pred.predicted_for).getTime() - targetTime);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closest = pred;
+      }
+    }
+
+    predictionMap.set(lotId, closest);
+  });
+
   return predictionMap;
 }
 
@@ -122,34 +169,49 @@ export async function getRecommendedDepartureTime(
   }
 
   // Find the best arrival time (before target) with lowest occupancy
-  const targetTimeStr = format(targetArrivalTime, 'HH:mm:00');
+  const targetTimestamp = targetArrivalTime.getTime();
   const candidatePredictions = predictions.filter(
-    p => p.prediction_time <= targetTimeStr
+    p => new Date(p.predicted_for).getTime() <= targetTimestamp
   );
+
+  if (candidatePredictions.length === 0) {
+    // Use first prediction if none before target
+    candidatePredictions.push(predictions[0]);
+  }
 
   // Find the optimal arrival time
   let bestPrediction = candidatePredictions[0];
-  let bestChance = calculateChanceOfSpot(bestPrediction.predicted_occupancy);
+  let bestChance = calculateChanceOfSpot(bestPrediction.predicted_percent);
 
   for (const pred of candidatePredictions) {
-    const chance = calculateChanceOfSpot(pred.predicted_occupancy);
-    if (chance > bestChance ||
-        (chance === bestChance && pred.prediction_time > bestPrediction.prediction_time)) {
+    const chance = calculateChanceOfSpot(pred.predicted_percent);
+    const predTime = new Date(pred.predicted_for).getTime();
+    const bestTime = new Date(bestPrediction.predicted_for).getTime();
+
+    if (chance > bestChance || (chance === bestChance && predTime > bestTime)) {
       bestPrediction = pred;
       bestChance = chance;
     }
   }
 
   // Calculate departure time
-  const arrivalTime = parseTimeToDate(bestPrediction.prediction_time, targetArrivalTime);
+  const arrivalTime = new Date(bestPrediction.predicted_for);
   const departureTime = addMinutes(arrivalTime, -travelTimeMinutes);
+
+  // Map confidence string to number
+  const confidenceMap: Record<string, number> = {
+    'low': 0.3,
+    'medium': 0.6,
+    'high': 0.8,
+    'verified': 0.95,
+  };
 
   return {
     recommendedDepartureTime: departureTime,
     arrivalTime,
-    predictedOccupancy: bestPrediction.predicted_occupancy,
+    predictedOccupancy: bestPrediction.predicted_percent,
     chanceOfSpot: bestChance,
-    confidence: bestPrediction.confidence,
+    confidence: confidenceMap[bestPrediction.confidence] ?? 0.5,
     alternativeLots: [], // Would be populated from other lot predictions
   };
 }
@@ -157,7 +219,7 @@ export async function getRecommendedDepartureTime(
 /**
  * Calculate chance of finding a spot based on occupancy
  */
-function calculateChanceOfSpot(occupancyPercent: number): number {
+export function calculateChanceOfSpot(occupancyPercent: number): number {
   if (occupancyPercent >= 98) return 5;
   if (occupancyPercent >= 95) return 15;
   if (occupancyPercent >= 90) return 30;
@@ -165,17 +227,6 @@ function calculateChanceOfSpot(occupancyPercent: number): number {
   if (occupancyPercent >= 75) return 70;
   if (occupancyPercent >= 60) return 85;
   return 95;
-}
-
-/**
- * Parse time string (HH:mm:ss) to Date object on a specific date
- */
-function parseTimeToDate(timeStr: string, referenceDate: Date): Date {
-  const [hours, minutes] = timeStr.split(':').map(Number);
-  let date = new Date(referenceDate);
-  date = setHours(date, hours);
-  date = setMinutes(date, minutes);
-  return date;
 }
 
 // ============================================================
@@ -187,7 +238,7 @@ export interface PredictionTimelineEntry {
   occupancy: number;
   status: 'open' | 'busy' | 'filling' | 'full';
   chanceOfSpot: number;
-  confidence: number;
+  confidence: string;
 }
 
 /**
@@ -200,10 +251,10 @@ export async function getPredictionTimeline(
   const predictions = await getLotPredictions(lotId, date);
 
   return predictions.map(pred => ({
-    time: parseTimeToDate(pred.prediction_time, date),
-    occupancy: pred.predicted_occupancy,
-    status: getStatusFromOccupancy(pred.predicted_occupancy),
-    chanceOfSpot: calculateChanceOfSpot(pred.predicted_occupancy),
+    time: new Date(pred.predicted_for),
+    occupancy: pred.predicted_percent,
+    status: getStatusFromOccupancy(pred.predicted_percent),
+    chanceOfSpot: calculateChanceOfSpot(pred.predicted_percent),
     confidence: pred.confidence,
   }));
 }
@@ -238,20 +289,22 @@ export async function findBestLot(
   destinationBuilding: string
 ): Promise<BestLotRecommendation[]> {
   // Get valid lots for permit
-  const { data: lotsData } = await supabase.rpc('get_lots_with_status', {
+  const { data: lotsRaw } = await supabase.rpc('get_lots_with_status', {
     p_permit_type: permitType,
-  });
+  } as any);
 
-  if (!lotsData || lotsData.length === 0) {
+  const lotsData = (lotsRaw || []) as LotWithStatusForPermit[];
+
+  if (lotsData.length === 0) {
     return [];
   }
 
-  const lotIds = lotsData.map(l => l.lot_id);
+  const lotIds = lotsData.map((l) => l.lot_id);
   const predictions = await getPredictionsForLots(lotIds, arrivalTime);
 
-  const recommendations: BestLotRecommendation[] = lotsData.map(lot => {
+  const recommendations: BestLotRecommendation[] = lotsData.map((lot) => {
     const prediction = predictions.get(lot.lot_id);
-    const occupancy = prediction?.predicted_occupancy ?? lot.occupancy_percent;
+    const occupancy = prediction?.predicted_percent ?? lot.occupancy_percent ?? 50;
     const walkTime = lot.walk_times?.[destinationBuilding] ?? 10;
     const chanceOfSpot = calculateChanceOfSpot(occupancy);
 

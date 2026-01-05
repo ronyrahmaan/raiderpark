@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Notification icon - monochrome for Android -->
+<svg width="96" height="96" viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg">
+  <!-- P Letter - white on transparent for notification -->
+  <path
+    d="M24 16 L24 80 L40 80 L40 56 L52 56 C68 56 76 46 76 36 C76 26 68 16 52 16 L24 16 Z M40 28 L48 28 C56 28 60 31 60 36 C60 41 56 44 48 44 L40 44 Z"
+    fill="#FFFFFF"
+  />
+</svg>
